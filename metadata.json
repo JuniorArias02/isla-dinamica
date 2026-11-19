@@ -1,0 +1,11 @@
+{
+  "name": "Isla Dinámica",
+  "description": "Isla dinámica nativa para GNOME Shell: AirPods, música en Brave y notificaciones.\n\nAutor: JuniorArias02",
+  "uuid": "isla-dinamica@juniorarias02",
+  "shell-version": [
+    "50"
+  ],
+  "version": 1,
+  "author": "JuniorArias02",
+  "settings-schema": "org.gnome.shell.extensions.isla-dinamica"
+}

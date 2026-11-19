@@ -1,0 +1,964 @@
+/*
+ * Estilos de la Isla Dinámica para GNOME Shell 50.
+ *
+ * Paleta: negro puro de la isla, blancos con transparencia para jerarquía
+ * y acentos tipo móvil (verde, amarillo, rojo). Sin desenfoques: solo
+ * colores, bordes redondeados y sombras, para no cargar la GPU integrada.
+ */
+
+/* ═════════════════════ Botón del panel ═════════════════════ */
+
+/* Sin el resaltado gris que GNOME pone a los botones del panel */
+#panel .panel-button.isla-boton-panel,
+#panel .panel-button.isla-boton-panel:hover,
+#panel .panel-button.isla-boton-panel:focus,
+#panel .panel-button.isla-boton-panel:active,
+#panel .panel-button.isla-boton-panel:checked {
+    background-color: transparent;
+    box-shadow: none;
+    border-color: transparent;
+    -natural-hpadding: 4px;
+    -minimum-hpadding: 2px;
+}
+
+.isla-caja-panel {
+    spacing: 5px;
+}
+
+/* ═════════════════════ Cápsula compacta ═════════════════════ */
+
+.isla-pildora {
+    background-color: #000000;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.40);
+    min-height: 26px;
+    padding: 0 10px 0 4px;
+    spacing: 8px;
+}
+
+#panel .panel-button.isla-boton-panel:hover .isla-pildora {
+    border-color: rgba(255, 255, 255, 0.24);
+}
+
+/* Reposo: cápsula con la hora (reemplaza al reloj de Ubuntu) */
+.isla-pildora-reposo {
+    min-width: 84px;
+    padding: 0 14px;
+}
+
+.isla-pildora-hora {
+    color: #ffffff;
+    font-size: 10pt;
+    font-weight: 800;
+    font-feature-settings: "tnum";
+}
+
+.isla-pildora-musica {
+    min-width: 150px;
+}
+
+.isla-pildora-titulo {
+    color: #ffffff;
+    font-size: 9.5pt;
+    font-weight: 800;
+    max-width: 150px;
+}
+
+/* ═════════════════════ Burbuja (círculo) ═════════════════════ */
+
+.isla-burbuja {
+    background-color: #000000;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.40);
+    width: 26px;
+    height: 26px;
+}
+
+#panel .panel-button.isla-boton-panel .isla-burbuja:hover {
+    border-color: rgba(255, 255, 255, 0.24);
+}
+
+.isla-indicador-icono {
+    icon-size: 10px;
+    color: #ffffff;
+}
+
+.isla-indicador-texto {
+    color: #ffffff;
+    font-size: 9pt;
+    font-weight: 800;
+    font-feature-settings: "tnum";
+}
+
+/* ═════════════════════ Onda de audio ═════════════════════ */
+
+.isla-onda {
+    spacing: 2px;
+}
+
+.isla-onda-barra {
+    width: 3px;
+    height: 13px;
+    border-radius: 2px;
+    background-color: #30d158;
+}
+
+.isla-onda-grande {
+    spacing: 3px;
+    padding-top: 6px;
+}
+
+.isla-onda-grande .isla-onda-barra {
+    width: 4px;
+    height: 22px;
+}
+
+/* ═════════════════════ Carátulas ═════════════════════ */
+
+.isla-caratula {
+    background-size: cover;
+    background-gradient-direction: vertical;
+    background-gradient-start: #5e5ce6;
+    background-gradient-end: #bf5af2;
+}
+
+.isla-caratula.con-portada {
+    background-gradient-direction: none;
+    background-color: #1c1c1e;
+}
+
+.isla-caratula-respaldo {
+    color: #ffffff;
+}
+
+.isla-caratula-mini {
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+}
+
+.isla-caratula-mini .isla-caratula-respaldo {
+    icon-size: 11px;
+}
+
+.isla-caratula-grande {
+    width: 76px;
+    height: 76px;
+    border-radius: 18px;
+}
+
+.isla-caratula-grande .isla-caratula-respaldo {
+    icon-size: 34px;
+}
+
+/* ═════════════════════ Tarjeta flotante ═════════════════════ */
+
+.isla-tarjeta-flotante {
+    background-color: #000000;
+    border-radius: 36px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+    color: #ffffff;
+}
+
+/* ═════════════════════ Alertas ═════════════════════ */
+
+.isla-alerta {
+    padding: 12px 16px 12px 12px;
+    spacing: 12px;
+}
+
+.isla-alerta-icono-caja {
+    width: 46px;
+    height: 46px;
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.isla-alerta-icono {
+    icon-size: 26px;
+    color: #ffffff;
+}
+
+.isla-alerta-titulo {
+    color: #ffffff;
+    font-size: 11.5pt;
+    font-weight: 800;
+}
+
+.isla-alerta-detalle {
+    font-size: 10pt;
+    font-weight: bold;
+}
+
+.isla-alerta-bluetooth.conectado .isla-alerta-detalle {
+    color: #30d158;
+}
+
+.isla-alerta-bluetooth.desconectado .isla-alerta-detalle {
+    color: #ff453a;
+}
+
+.isla-alerta-bluetooth.desconectado .isla-alerta-icono {
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.isla-alerta-icono-app {
+    icon-size: 42px;
+}
+
+.isla-alerta-icono-app.isla-icono-generico {
+    icon-size: 24px;
+    color: #ffffff;
+    background-color: #ff9f0a;
+    border-radius: 12px;
+    padding: 9px;
+}
+
+.isla-alerta-cabecera {
+    spacing: 8px;
+}
+
+.isla-alerta-hora {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 8.5pt;
+}
+
+.isla-alerta-cuerpo {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 10pt;
+    max-height: 2.9em;
+}
+
+/* ═════════════════════ Vista expandida ═════════════════════ */
+
+/* El relleno debe coincidir con RELLENO_PX de vistaExpandida.js */
+.isla-expandida {
+    padding: 20px;
+}
+
+.isla-carrusel {
+    spacing: 12px;
+}
+
+/* Cabecera de la tarjeta: fecha (abre el calendario) y hora */
+.isla-expandida {
+    spacing: 10px;
+}
+
+.isla-cabecera {
+    spacing: 8px;
+}
+
+.isla-cabecera-boton-fecha {
+    border-radius: 10px;
+    padding: 2px 6px;
+}
+
+.isla-cabecera-boton-fecha:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.isla-cabecera-fecha {
+    color: rgba(255, 255, 255, 0.70);
+    font-size: 9.5pt;
+    font-weight: bold;
+}
+
+.isla-cabecera-hora {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 9.5pt;
+    font-weight: bold;
+    font-feature-settings: "tnum";
+}
+
+/* Cada página tiene su propio alto: la isla se adapta al deslizar */
+.isla-pagina-vacia {
+    min-height: 110px;
+}
+
+.isla-pagina-encabezado {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 9pt;
+    font-weight: bold;
+    padding-bottom: 10px;
+}
+
+/* Puntos indicadores del carrusel */
+.isla-puntos {
+    spacing: 6px;
+}
+
+.isla-punto {
+    height: 6px;
+    border-radius: 3px;
+    background-color: rgba(255, 255, 255, 0.25);
+}
+
+.isla-punto-activo {
+    background-color: #ffffff;
+}
+
+/* ───── Página de música ───── */
+
+.isla-pagina-musica {
+    spacing: 14px;
+}
+
+.isla-musica-cabecera {
+    spacing: 14px;
+}
+
+.isla-musica-boton-textos {
+    border-radius: 14px;
+    padding: 4px 6px;
+}
+
+.isla-musica-boton-textos:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+.isla-musica-titulo {
+    color: #ffffff;
+    font-size: 13pt;
+    font-weight: 800;
+    max-width: 210px;
+}
+
+.isla-musica-artista {
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 10.5pt;
+    max-width: 210px;
+}
+
+.isla-musica-app {
+    spacing: 6px;
+    padding-top: 4px;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 8.5pt;
+}
+
+.isla-musica-app-icono {
+    icon-size: 14px;
+}
+
+.isla-fila-progreso {
+    spacing: 10px;
+    /* Margen para que el tiempo total no toque el borde recortado del carrusel */
+    padding: 0 4px 0 0;
+}
+
+.isla-tiempo {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 8.5pt;
+    font-weight: bold;
+    font-feature-settings: "tnum";
+    min-width: 38px;
+}
+
+.isla-tiempo-total {
+    text-align: right;
+}
+
+/* Zona de clic alta alrededor de la barra fina (fácil de acertar) */
+.isla-zona-barra {
+    min-height: 18px;
+}
+
+.isla-zona-barra.buscable:hover .isla-barra-progreso,
+.isla-zona-barra.buscable:hover .isla-relleno-progreso {
+    height: 9px;
+    border-radius: 5px;
+}
+
+.isla-barra-progreso {
+    height: 6px;
+    border-radius: 3px;
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+.isla-relleno-progreso {
+    height: 6px;
+    border-radius: 3px;
+    background-color: #ffffff;
+}
+
+.isla-musica-controles {
+    spacing: 26px;
+}
+
+.isla-boton-control {
+    border-radius: 999px;
+    padding: 8px;
+    color: #ffffff;
+}
+
+.isla-boton-control:hover,
+.isla-boton-control:focus {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.isla-boton-control:insensitive {
+    color: rgba(255, 255, 255, 0.28);
+}
+
+.isla-icono-control {
+    icon-size: 24px;
+}
+
+/* Play/pausa: círculo blanco con icono negro */
+.isla-boton-principal {
+    background-color: #ffffff;
+    color: #000000;
+    padding: 13px;
+}
+
+.isla-boton-principal:hover,
+.isla-boton-principal:focus {
+    background-color: #e5e5ea;
+}
+
+.isla-boton-principal .isla-icono-control {
+    icon-size: 26px;
+}
+
+/* ───── Página de dispositivos ───── */
+
+.isla-lista-dispositivos {
+    spacing: 12px;
+}
+
+.isla-fila-dispositivo {
+    spacing: 14px;
+    padding: 10px 12px;
+    border-radius: 22px;
+    background-color: rgba(255, 255, 255, 0.07);
+}
+
+.isla-dispositivo-icono-caja {
+    width: 52px;
+    height: 52px;
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.isla-dispositivo-icono {
+    icon-size: 30px;
+    color: #ffffff;
+}
+
+.isla-dispositivo-nombre {
+    color: #ffffff;
+    font-size: 12pt;
+    font-weight: 800;
+}
+
+.isla-dispositivo-estado {
+    color: #30d158;
+    font-size: 9.5pt;
+    font-weight: bold;
+}
+
+/* ───── Página vacía ───── */
+
+.isla-pagina-vacia {
+    spacing: 10px;
+}
+
+.isla-vacia-icono {
+    icon-size: 42px;
+    color: rgba(255, 255, 255, 0.30);
+}
+
+.isla-vacia-texto {
+    color: rgba(255, 255, 255, 0.50);
+    font-size: 11pt;
+    font-weight: bold;
+}
+
+/* ═════════════════════ AirPods (protocolo AAP) ═════════════════════ */
+
+.isla-dispositivo-cabecera {
+    spacing: 14px;
+}
+
+.isla-fila-dispositivo {
+    spacing: 14px;
+}
+
+/* Tres anillos: izquierdo, derecho, estuche */
+.isla-baterias-airpods {
+    spacing: 22px;
+}
+
+.isla-baterias-airpods.compacto {
+    spacing: 8px;
+}
+
+.isla-pieza-airpods {
+    spacing: 4px;
+}
+
+.isla-pieza-pie {
+    spacing: 3px;
+}
+
+.isla-pieza-etiqueta {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 8.5pt;
+    font-weight: bold;
+}
+
+.compacto .isla-pieza-etiqueta {
+    font-size: 7.5pt;
+}
+
+.compacto .isla-indicador-texto {
+    font-size: 7.5pt;
+}
+
+.isla-pieza-rayo {
+    icon-size: 10px;
+    color: #30d158;
+}
+
+.isla-pieza-icono-estuche {
+    icon-size: 12px;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+/* Selector de modo de ruido */
+.isla-selector-ruido {
+    spacing: 6px;
+}
+
+.isla-selector-ruido-boton {
+    border-radius: 16px;
+    padding: 8px 4px;
+    background-color: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.80);
+}
+
+.isla-selector-ruido-boton:hover {
+    background-color: rgba(255, 255, 255, 0.13);
+}
+
+.isla-selector-ruido-boton.activo {
+    background-color: #ffffff;
+    color: #000000;
+}
+
+.isla-selector-ruido-icono {
+    icon-size: 20px;
+}
+
+.isla-selector-ruido-texto {
+    font-size: 8.5pt;
+    font-weight: bold;
+    padding-top: 3px;
+}
+
+/* ═════════════════════ Notificaciones ═════════════════════ */
+
+/* Foto del contacto en círculo + insignia de la app */
+.isla-avatar-foto {
+    border-radius: 999px;
+    background-size: cover;
+}
+
+.isla-avatar-foto.generico {
+    background-color: #ff9f0a;
+    color: #ffffff;
+}
+
+.isla-avatar-insignia {
+    border-radius: 999px;
+    background-color: #000000;
+    border: 2px solid #000000;
+}
+
+.isla-alerta-contador {
+    color: #30d158;
+    font-size: 8.5pt;
+    font-weight: bold;
+}
+
+/* Página de notificaciones */
+.isla-pagina-notificaciones {
+    spacing: 8px;
+}
+
+.isla-pagina-notificaciones-cabecera {
+    spacing: 8px;
+}
+
+.isla-pagina-notificaciones-cabecera .isla-pagina-encabezado {
+    padding-bottom: 0;
+}
+
+.isla-boton-borrar {
+    color: rgba(255, 255, 255, 0.70);
+    font-size: 8.5pt;
+    font-weight: bold;
+    border-radius: 10px;
+    padding: 3px 10px;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.isla-boton-borrar:hover {
+    background-color: rgba(255, 255, 255, 0.16);
+}
+
+.isla-lista-notificaciones {
+    spacing: 6px;
+}
+
+.isla-fila-notificacion {
+    spacing: 4px;
+    border-radius: 18px;
+    background-color: rgba(255, 255, 255, 0.07);
+}
+
+.isla-fila-notificacion-boton {
+    border-radius: 18px;
+    padding: 8px 4px 8px 10px;
+}
+
+.isla-fila-notificacion-boton:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.isla-fila-notificacion-contenido {
+    spacing: 10px;
+}
+
+.isla-fila-notificacion-cabecera {
+    spacing: 6px;
+}
+
+.isla-fila-notificacion-titulo {
+    color: #ffffff;
+    font-size: 10pt;
+    font-weight: 800;
+}
+
+.isla-fila-notificacion-meta {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 8pt;
+}
+
+.isla-fila-notificacion-cuerpo {
+    color: rgba(255, 255, 255, 0.70);
+    font-size: 9.5pt;
+}
+
+.isla-fila-notificacion-cerrar {
+    border-radius: 999px;
+    padding: 6px;
+    margin-right: 6px;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.isla-fila-notificacion-cerrar:hover {
+    background-color: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+}
+
+.isla-notificaciones-mas {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 8.5pt;
+}
+
+/* Puntito azul en la cápsula: notificaciones sin ver
+   (el verde queda para la cámara, como en el iPhone) */
+.isla-punto-no-leidas {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background-color: #0a84ff;
+}
+
+/* Puntitos de privacidad: naranja = micrófono, verde = cámara, rojo = pantalla */
+.isla-privacidad {
+    spacing: 4px;
+}
+
+.isla-punto-privacidad {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+}
+
+.isla-punto-privacidad.microfono {
+    background-color: #ff9f0a;
+}
+
+.isla-punto-privacidad.camara {
+    background-color: #30d158;
+}
+
+.isla-punto-privacidad.pantalla {
+    background-color: #ff453a;
+}
+
+/* Alerta con varios mensajes del mismo chat: uno por línea, el último resaltado */
+.isla-alerta-lineas {
+    spacing: 1px;
+}
+
+.isla-alerta-linea {
+    color: rgba(255, 255, 255, 0.50);
+    font-size: 9.5pt;
+}
+
+.isla-alerta-linea.ultima {
+    color: rgba(255, 255, 255, 0.90);
+}
+
+/* Luna: notificación recibida con "No molestar" (la isla avisa en silencio) */
+.isla-alerta-luna {
+    icon-size: 11px;
+    color: #bf5af2;
+}
+
+/* ═════════════════════ Volumen y brillo ═════════════════════ */
+
+.isla-alerta-indicador {
+    padding: 10px 18px;
+    spacing: 12px;
+}
+
+.isla-indicador-osd-icono {
+    icon-size: 20px;
+    color: #ffffff;
+}
+
+.isla-indicador-osd-barra {
+    height: 8px;
+    border-radius: 4px;
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+.isla-indicador-osd-relleno {
+    height: 8px;
+    border-radius: 4px;
+    background-color: #ffffff;
+}
+
+/* Volumen por encima del 100 % (amplificado) */
+.isla-indicador-osd-relleno.amplificado {
+    background-color: #ff9f0a;
+}
+
+.isla-indicador-osd-porcentaje {
+    color: rgba(255, 255, 255, 0.80);
+    font-size: 10pt;
+    font-weight: 800;
+    font-feature-settings: "tnum";
+    min-width: 30px;
+    text-align: right;
+}
+
+/* ═════════════════════ Energía (cargador) ═════════════════════ */
+
+.isla-alerta-energia.enchufado .isla-alerta-icono {
+    color: #30d158;
+}
+
+.isla-alerta-energia.enchufado .isla-alerta-detalle {
+    color: #30d158;
+}
+
+.isla-alerta-energia.desenchufado .isla-alerta-detalle {
+    color: rgba(255, 255, 255, 0.65);
+}
+
+/* ═════════════════════ Copiado ═════════════════════ */
+
+.isla-alerta-portapapeles {
+    padding: 10px 18px 10px 10px;
+}
+
+.isla-portapapeles-icono-caja {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background-color: #30d158;
+}
+
+.isla-portapapeles-icono {
+    icon-size: 18px;
+    color: #000000;
+}
+
+.isla-portapapeles-detalle {
+    color: rgba(255, 255, 255, 0.60);
+    font-size: 9pt;
+}
+
+/* ═════════════════════ Temporizador ═════════════════════ */
+
+/* Cápsula con la cuenta atrás */
+.isla-pildora-temporizador {
+    min-width: 96px;
+    padding: 0 14px;
+}
+
+.isla-pildora-contenido-temporizador {
+    spacing: 6px;
+}
+
+.isla-pildora-temporizador-icono {
+    icon-size: 14px;
+    color: #ff9f0a;
+}
+
+.isla-pildora-cuenta {
+    color: #ff9f0a;
+    font-size: 10pt;
+    font-weight: 800;
+    font-feature-settings: "tnum";
+}
+
+.isla-pildora-contenido-temporizador.pausado {
+    opacity: 0.55;
+}
+
+/* Alerta "¡Tiempo cumplido!" */
+.isla-temporizador-icono-caja {
+    width: 46px;
+    height: 46px;
+    border-radius: 999px;
+    background-color: rgba(255, 159, 10, 0.22);
+}
+
+.isla-temporizador-alerta-icono {
+    icon-size: 26px;
+    color: #ff9f0a;
+}
+
+.isla-temporizador-alerta-detalle {
+    color: #ff9f0a;
+    font-size: 10pt;
+    font-weight: bold;
+}
+
+.isla-temporizador-listo {
+    color: #000000;
+    background-color: #ff9f0a;
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 9.5pt;
+    font-weight: 800;
+}
+
+/* Página del temporizador */
+.isla-pagina-temporizador {
+    spacing: 4px;
+}
+
+.isla-temporizador-presets {
+    spacing: 8px;
+}
+
+.isla-temporizador-fila-presets {
+    spacing: 8px;
+}
+
+.isla-temporizador-preset {
+    border-radius: 14px;
+    padding: 10px 4px;
+    background-color: rgba(255, 159, 10, 0.16);
+    color: #ff9f0a;
+    font-size: 10pt;
+    font-weight: 800;
+}
+
+.isla-temporizador-preset:hover {
+    background-color: rgba(255, 159, 10, 0.28);
+}
+
+.isla-temporizador-activo {
+    spacing: 18px;
+    padding: 4px 0;
+}
+
+.isla-temporizador-cuenta {
+    color: #ffffff;
+    font-size: 16pt;
+    font-weight: 800;
+    font-feature-settings: "tnum";
+}
+
+.isla-temporizador-derecha {
+    spacing: 8px;
+}
+
+.isla-temporizador-mensaje {
+    color: #ff9f0a;
+    font-size: 10.5pt;
+    font-weight: 800;
+}
+
+.isla-temporizador-controles {
+    spacing: 12px;
+}
+
+.isla-temporizador-sumar {
+    border-radius: 999px;
+    padding: 8px 12px;
+    background-color: rgba(255, 255, 255, 0.10);
+    color: #ffffff;
+    font-size: 9.5pt;
+    font-weight: 800;
+}
+
+.isla-temporizador-sumar:hover {
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Pausa/reanudar: círculo naranja con icono negro */
+.isla-boton-control.isla-boton-principal.isla-temporizador-pausa {
+    background-color: #ff9f0a;
+    color: #000000;
+}
+
+.isla-boton-control.isla-boton-principal.isla-temporizador-pausa:hover {
+    background-color: #ffb340;
+}
+
+.isla-temporizador-cancelar {
+    border-radius: 999px;
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.10);
+    color: rgba(255, 255, 255, 0.80);
+}
+
+.isla-temporizador-cancelar:hover {
+    background-color: rgba(255, 69, 58, 0.30);
+    color: #ffffff;
+}
+
+.isla-temporizador-boton-listo {
+    padding: 8px 18px;
+    background-color: #ff9f0a;
+    color: #000000;
+}
+
+/* Círculo (actividad secundaria): portada y temporizador */
+.isla-caratula-burbuja {
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+}
+
+.isla-caratula-burbuja .isla-caratula-respaldo {
+    icon-size: 11px;
+}
+
+.isla-burbuja-temporizador-icono {
+    icon-size: 10px;
+    color: #ff9f0a;
+}

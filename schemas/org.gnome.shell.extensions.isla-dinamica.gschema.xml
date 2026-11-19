@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Opciones de la Isla Dinámica (Autor: JuniorArias02).
+  Se editan desde la ventana de ajustes (prefs.js) y se leen con modulos/ajustes.js.
+  Tras modificar este archivo: glib-compile-schemas extension/schemas/
+-->
+<schemalist gettext-domain="isla-dinamica">
+  <schema id="org.gnome.shell.extensions.isla-dinamica" path="/org/gnome/shell/extensions/isla-dinamica/">
+
+    <!-- ───── Notificaciones ───── -->
+    <key name="notificaciones-privadas" type="b">
+      <default>false</default>
+      <summary>Modo privado</summary>
+      <description>La isla muestra quién escribió, pero no el texto del mensaje.</description>
+    </key>
+    <key name="notificar-en-no-molestar" type="b">
+      <default>true</default>
+      <summary>Avisar con "No molestar"</summary>
+      <description>Con "No molestar" activado, la isla sigue mostrando las notificaciones en silencio.</description>
+    </key>
+    <key name="duracion-notificaciones-ms" type="i">
+      <range min="1500" max="15000"/>
+      <default>4500</default>
+      <summary>Duración de las notificaciones (ms)</summary>
+    </key>
+
+    <!-- ───── Isla ───── -->
+    <key name="abrir-con-puntero" type="b">
+      <default>false</default>
+      <summary>Abrir con el puntero encima</summary>
+      <description>Además del clic, la isla se abre al dejar el puntero sobre la cápsula.</description>
+    </key>
+    <key name="tiempo-cierre-ms" type="i">
+      <range min="1000" max="15000"/>
+      <default>3000</default>
+      <summary>Cierre automático (ms)</summary>
+      <description>Tiempo que la isla abierta sigue visible después de que el puntero sale de ella.</description>
+    </key>
+    <key name="ocultar-reloj-gnome" type="b">
+      <default>true</default>
+      <summary>Ocultar el reloj de Ubuntu</summary>
+      <description>La isla muestra la hora; el texto del reloj del panel se oculta.</description>
+    </key>
+    <key name="forzar-animaciones" type="b">
+      <default>true</default>
+      <summary>Animaciones siempre</summary>
+      <description>La isla anima aunque el sistema tenga las animaciones desactivadas.</description>
+    </key>
+
+    <!-- ───── Avisos ───── -->
+    <key name="mostrar-volumen-brillo" type="b">
+      <default>true</default>
+      <summary>Volumen y brillo en la isla</summary>
+    </key>
+    <key name="avisar-cargador" type="b">
+      <default>true</default>
+      <summary>Avisar al enchufar o desenchufar el cargador</summary>
+    </key>
+    <key name="avisar-copiado" type="b">
+      <default>true</default>
+      <summary>Avisar al copiar algo</summary>
+    </key>
+    <key name="mostrar-privacidad" type="b">
+      <default>true</default>
+      <summary>Puntitos de privacidad</summary>
+      <description>Micrófono, cámara y pantalla en uso.</description>
+    </key>
+  </schema>
+</schemalist>
