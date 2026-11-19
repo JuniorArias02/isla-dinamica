@@ -10,7 +10,9 @@
     "revisar": "eslint .",
     "corregir": "eslint . --fix",
     "probar": "./pruebas/ejecutar.sh",
-    "probar:todo": "./pruebas/ejecutar.sh --aislado"
+    "probar:todo": "./pruebas/ejecutar.sh --aislado",
+    "empaquetar": "mkdir -p dist && gnome-extensions pack . --extra-source=modulos --extra-source=recursos --extra-source=LICENSE --schema=schemas/org.gnome.shell.extensions.isla-dinamica.gschema.xml --out-dir=dist --force",
+    "probar:paquete": "npm run empaquetar && ./pruebas/aislado/aislado.sh dist/isla-dinamica@juniorarias02.shell-extension.zip"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

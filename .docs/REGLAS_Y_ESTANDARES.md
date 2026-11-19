@@ -198,6 +198,8 @@ Además:
   // SPDX-License-Identifier: GPL-2.0-or-later
   // SPDX-FileCopyrightText: 2026 JuniorArias02
   ```
+* **Antes de publicar una versión:** `npm run probar:paquete`, que prueba el `.zip` instalado tal como lo recibirán los usuarios (ver [PUBLICACION.md](PUBLICACION.md)).
+* **Mensajes al journal:** `registrarInfo` solo para arranques y cambios de estado poco frecuentes. Lo que ocurre a menudo (cada notificación, cada canción) va con `registrarDepuracion`. Los revisores de extensions.gnome.org rechazan extensiones que llenan el journal.
 * **Documentación:** si cambian capas, estados, tiempos, gestos o ajustes, se actualizan `ARQUITECTURA.md` y `LOGICA_Y_FLUJO.md` en el mismo cambio.
 
 ---

@@ -35,7 +35,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
 import {ajuste, AJUSTES} from '../../ajustes.js';
-import {registrarAviso, registrarDepuracion, registrarError, registrarInfo, protegido} from '../../registro.js';
+import {registrarAviso, registrarDepuracion, registrarError, protegido} from '../../registro.js';
 import {reconocerApp, separarOrigen} from './reconocedorApps.js';
 
 /**
@@ -131,7 +131,7 @@ export class CapturadorNotificaciones {
 
     _actualizarNoMolestar() {
         this._noMolestar = !this._ajustes.get_boolean('show-banners');
-        registrarInfo(`"No molestar" ${this._noMolestar ? 'activado' : 'desactivado'}` +
+        registrarDepuracion(`"No molestar" ${this._noMolestar ? 'activado' : 'desactivado'}` +
             `${this._noMolestar && ajuste(AJUSTES.NOTIFICAR_EN_NO_MOLESTAR) ? ': la isla seguirá avisando en silencio.' : '.'}`);
     }
 
@@ -267,10 +267,11 @@ export class CapturadorNotificaciones {
         };
 
         // Diagnóstico SIN el contenido del mensaje (privacidad): solo datos técnicos.
-        registrarInfo(`Notificación: fuente="${nombreFuente}" appId=${idAppFuente ?? '-'} ` +
+        // Solo con depuración activa: una línea por notificación llenaría el journal.
+        registrarDepuracion(`Notificación: fuente="${nombreFuente}" appId=${idAppFuente ?? '-'} ` +
             `reconocida=${app?.id ?? 'no'} origen=${origen ?? '-'} ` +
             `imagen=${notificacion.gicon?.constructor?.name ?? 'ninguna'} acciones=${notificacion.actions?.length ?? 0}` +
-            `${silenciosa ? ' (No molestar)' : ''}`, true);
+            `${silenciosa ? ' (No molestar)' : ''}`);
 
         try {
             this._alRecibir?.(id, datos);

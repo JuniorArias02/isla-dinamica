@@ -121,7 +121,7 @@ class TarjetaFlotante extends St.Widget {
         if (this._estaEn(destino))
             return;
 
-        // Ancho y alto con resortes distintos: se ensancha un pelín antes de crecer hacia abajo.
+        // Ancho y alto con resortes distintos: se ensancha un poco antes de crecer hacia abajo.
         // `x` va con el ancho para que la isla crezca desde su centro.
         animarConResorte(this, {x: destino.x, width: destino.width}, {resorte: RESORTES.APERTURA_ANCHO});
         animarConResorte(this, {y: destino.y, height: destino.height}, {resorte: RESORTES.APERTURA_ALTO});

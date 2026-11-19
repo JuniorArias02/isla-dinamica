@@ -48,6 +48,16 @@ En GNOME 49 o anteriores no carga: usa APIs que cambiaron en GNOME 50 (gestos de
 
 ## Instalación
 
+### Desde una versión publicada (recomendado)
+
+Descarga `isla-dinamica@juniorarias02.shell-extension.zip` de la página de [versiones](https://github.com/JuniorArias02/isla-dinamica/releases) e instálalo:
+
+```bash
+gnome-extensions install isla-dinamica@juniorarias02.shell-extension.zip
+```
+
+### Desde el código
+
 ```bash
 git clone https://github.com/JuniorArias02/isla-dinamica.git \
     ~/.local/share/gnome-shell/extensions/isla-dinamica@juniorarias02
@@ -55,7 +65,7 @@ git clone https://github.com/JuniorArias02/isla-dinamica.git \
 glib-compile-schemas ~/.local/share/gnome-shell/extensions/isla-dinamica@juniorarias02/schemas/
 ```
 
-En Wayland, GNOME solo detecta extensiones nuevas al iniciar sesión. Cierra sesión, vuelve a entrar y actívala:
+En cualquiera de los dos casos: en Wayland, GNOME solo detecta extensiones nuevas al iniciar sesión. Cierra sesión, vuelve a entrar y actívala:
 
 ```bash
 gnome-extensions enable isla-dinamica@juniorarias02
@@ -165,6 +175,8 @@ npm install              # una sola vez: instala ESLint
 npm run probar           # revisión del código + esquema + pruebas unitarias (~10 s)
 npm run probar:todo      # lo anterior + carga real en un GNOME Shell aislado (~30 s)
 npm run revisar          # solo la revisión del código
+npm run empaquetar       # crea el .zip para publicar en dist/
+npm run probar:paquete   # crea el .zip y lo prueba instalado en un GNOME aislado
 ```
 
 Sin npm, `./pruebas/ejecutar.sh` también funciona (comprueba la sintaxis en lugar de usar ESLint).
@@ -181,6 +193,7 @@ Antes de enviar un cambio, `npm run probar:todo` debe terminar con **✔ Todo co
 | [LOGICA_Y_FLUJO.md](.docs/LOGICA_Y_FLUJO.md) | Estados, prioridades, gestos y tiempos |
 | [REGLAS_Y_ESTANDARES.md](.docs/REGLAS_Y_ESTANDARES.md) | Normas de código obligatorias para contribuir |
 | [CONSIDERACIONES_SISTEMA.md](.docs/CONSIDERACIONES_SISTEMA.md) | Compatibilidad, pruebas y depuración |
+| [PUBLICACION.md](.docs/PUBLICACION.md) | Cómo publicar una versión en GitHub y en extensions.gnome.org |
 
 Antes de modificar el código, lee **REGLAS_Y_ESTANDARES.md**.
 

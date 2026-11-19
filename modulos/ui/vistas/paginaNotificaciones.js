@@ -8,7 +8,7 @@
  *   Notificaciones                                   Borrar
  *   [foto] Juan Pérez        WhatsApp · hace 2 min      ✕
  *          3 mensajes nuevos
- *          Quedó brutal la animación 🔥
+ *          ¿Nos vemos a las cinco?
  *   [foto] Mamá              WhatsApp · hace 5 min      ✕
  *          Ya llegué
  *

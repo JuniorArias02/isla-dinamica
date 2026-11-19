@@ -4,10 +4,10 @@
 /**
  * AlertaEnergia — aviso al enchufar o desenchufar el cargador del portátil.
  *
- *   [⚡]  Cargando                              (64)   ← anillo verde
+ *   [rayo]  Cargando                              (64)   ← anillo verde
  *        64 % · llena en 1 h 20 min
  *
- *   [🔋]  Usando batería                        (63)   ← anillo por nivel
+ *   [bat.]  Usando batería                        (63)   ← anillo por nivel
  *        63 % · quedan 3 h
  */
 

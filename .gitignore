@@ -4,7 +4,8 @@ schemas/gschemas.compiled
 # Dependencias de desarrollo (ESLint): se instalan con `npm install`
 node_modules/
 
-# Paquetes generados con `gnome-extensions pack`
+# Paquetes generados con `npm run empaquetar`
+dist/
 *.shell-extension.zip
 
 # Archivos temporales y del editor

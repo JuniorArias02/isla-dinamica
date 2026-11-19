@@ -3,7 +3,7 @@
 
 /**
  * BateriasAirPods — los tres anillos de batería de unos AirPods:
- * izquierdo, derecho y estuche, con un rayo ⚡ cuando cargan.
+ * izquierdo, derecho y estuche, con un rayo cuando cargan.
  *
  * También exporta `nivelMostrado()`, que decide qué porcentaje enseñar
  * cuando solo cabe un número (burbuja del panel).

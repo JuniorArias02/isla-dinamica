@@ -8,7 +8,7 @@
  *                      3 mensajes nuevos
  *                      Hola!                                  (anteriores, más tenues)
  *                      ¿Viste lo de la isla?
- *                      Quedó brutal la animación 🔥          (el último)
+ *                      ¿Nos vemos a las cinco?             (el último)
  *
  * Con un solo mensaje se muestra en hasta 2 líneas.
  *

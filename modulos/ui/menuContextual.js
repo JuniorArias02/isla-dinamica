@@ -6,8 +6,8 @@
  *
  *   No molestar                 [ ● ]
  *   ─────────────────────────────────
- *   ⚙  Ajustes de la isla
- *   📄 Registro de errores
+ *   [engranaje]  Ajustes de la isla
+ *   [documento]  Registro de errores
  *
  * Usa el menú nativo de GNOME (PopupMenu): mismo aspecto que el resto del panel,
  * y GNOME se encarga de cerrarlo con Esc o al hacer clic fuera.

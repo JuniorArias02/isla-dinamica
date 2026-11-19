@@ -4,7 +4,7 @@
 /**
  * AlertaModo — aviso breve al activar o desactivar un modo del sistema.
  *
- *   [🌙]  No molestar          [✈]  Modo avión
+ *   [luna]  No molestar        [avión]  Modo avión
  *         Activado                  Desactivado
  *
  * El círculo del icono toma el color del modo cuando se activa (morado para

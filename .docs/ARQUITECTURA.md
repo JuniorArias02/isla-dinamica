@@ -67,7 +67,7 @@ extension.js = raíz de composición: crea las piezas y las conecta. No tiene l�
 │   ├── unitarias/*.prueba.js     Lógica pura con gjs, fuera del Shell
 │   └── aislado/                  Carga real en un GNOME Shell sin pantalla
 ├── eslint.config.js              Revisión automática del código
-├── package.json                  Herramientas de desarrollo (ESLint) y comandos npm
+├── package.json                  Herramientas de desarrollo (ESLint) y comandos npm (probar, empaquetar)
 └── modulos/
     ├── constantes.js             Tiempos, tamaños, resortes, prioridades, estados. Única fuente de valores fijos
     ├── registro.js               Registro: journal + ~/.cache/isla-dinamica/registro.log, protegido(), intentar()

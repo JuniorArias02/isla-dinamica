@@ -4,8 +4,8 @@
 /**
  * Ventana de ajustes de la Isla Dinámica (Autor: JuniorArias02).
  *
- * Se abre desde Extensiones → Isla Dinámica → ⚙️ (o `gnome-extensions prefs
- * isla-dinamica@juniorarias02`). Corre en un proceso aparte (GTK 4 + libadwaita),
+ * Se abre con clic derecho en la isla → "Ajustes de la isla", desde la app Extensiones
+ * o con `gnome-extensions prefs isla-dinamica@juniorarias02`. Corre en un proceso aparte (GTK 4 + libadwaita),
  * sin acceso al Shell: solo escribe en GSettings. La isla lee cada opción en el
  * momento de usarla, así que los cambios se ven al instante.
  */
@@ -51,7 +51,7 @@ export default class PreferenciasIslaDinamica extends ExtensionPreferences {
         notificaciones.add(this._interruptor(AJUSTES.NOTIFICACIONES_PRIVADAS, 'Modo privado',
             'Muestra quién escribió, pero no el texto del mensaje. Útil al compartir pantalla.'));
         notificaciones.add(this._interruptor(AJUSTES.NOTIFICAR_EN_NO_MOLESTAR, 'Avisar con "No molestar"',
-            'Con "No molestar" activado, la isla sigue avisando en silencio (con una luna 🌙).'));
+            'Con "No molestar" activado, la isla sigue avisando en silencio, con el icono de una luna.'));
         notificaciones.add(this._segundos(AJUSTES.DURACION_NOTIFICACIONES_MS, 'Duración en pantalla',
             'Segundos que se ve cada notificación.', 1.5, 15));
         pagina.add(notificaciones);

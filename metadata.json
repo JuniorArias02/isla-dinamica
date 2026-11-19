@@ -1,11 +1,13 @@
 {
   "name": "Isla Dinámica",
-  "description": "Isla dinámica nativa para GNOME Shell: AirPods, música en Brave y notificaciones.\n\nAutor: JuniorArias02",
+  "description": "Una isla dinámica en el centro del panel: hora, música y temporizador en una cápsula que se transforma para mostrar notificaciones (con WhatsApp Web y Telegram), auriculares y AirPods con su batería, volumen, brillo, cargador, \"No molestar\" y modo avión.\n\nClic para abrirla, clic derecho para el menú y los ajustes.",
   "uuid": "isla-dinamica@juniorarias02",
   "shell-version": [
     "50"
   ],
   "version": 1,
+  "version-name": "1.0",
+  "url": "https://github.com/JuniorArias02/isla-dinamica",
   "author": "JuniorArias02",
   "settings-schema": "org.gnome.shell.extensions.isla-dinamica"
 }
