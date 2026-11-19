@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 JuniorArias02
+
 /**
  * PerfilAap — puente entre BlueZ y el protocolo AAP de los AirPods.
  *

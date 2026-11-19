@@ -61,6 +61,13 @@ extension.js = raíz de composición: crea las piezas y las conecta. No tiene l�
 ├── stylesheet.css                Todos los estilos (clases con prefijo .isla-)
 ├── schemas/                      Esquema GSettings
 ├── recursos/iconos/              Iconos propios *-symbolic.svg (se recolorean con CSS)
+├── pruebas/                      Pruebas (no forman parte de la extensión instalada)
+│   ├── ejecutar.sh               Ejecuta todas las comprobaciones
+│   ├── utilidades.js             prueba(), igual(), verdadero(), esperar()
+│   ├── unitarias/*.prueba.js     Lógica pura con gjs, fuera del Shell
+│   └── aislado/                  Carga real en un GNOME Shell sin pantalla
+├── eslint.config.js              Revisión automática del código
+├── package.json                  Herramientas de desarrollo (ESLint) y comandos npm
 └── modulos/
     ├── constantes.js             Tiempos, tamaños, resortes, prioridades, estados. Única fuente de valores fijos
     ├── registro.js               Registro: journal + ~/.cache/isla-dinamica/registro.log, protegido(), intentar()

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 JuniorArias02
+
 /**
  * MonitorPortapapeles — Capa 3 (servicio). Avisa cuando se copia algo.
  *

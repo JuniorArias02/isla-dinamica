@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 JuniorArias02
+
 /**
  * Avatar — foto del contacto en círculo con la insignia de la app en la
  * esquina (como las notificaciones del iPhone).

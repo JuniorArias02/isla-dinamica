@@ -175,13 +175,28 @@ import {IslaUI} from './modulos/ui/isla.js';
 
 ## 8. Antes de dar un cambio por terminado
 
-1. **Sintaxis:** `node --check` sobre una copia `.mjs` de cada archivo modificado (incluido `prefs.js`).
-   - Si cambió el esquema: `glib-compile-schemas --strict schemas/` sin errores, y las claves de `ajustes.js` iguales a las del esquema.
-2. **Lógica pura** (controlador, `protocolo.js`, `reconocedorApps.js`): se puede probar con `gjs -m` fuera del Shell (imports `file://` absolutos).
-3. **Unidades del touchpad:** Clutter entrega el desplazamiento suave en *unidades* (px ÷ 10). Un umbral de 2,2 equivale a ~22 px. Al simular gestos con un dispositivo virtual, enviar valores realistas.
-4. **Carga real:** GNOME Shell aislado (ver [CONSIDERACIONES_SISTEMA.md](CONSIDERACIONES_SISTEMA.md#gnome-shell-aislado)). Debe aparecer `Extensión activa.` sin `JS ERROR`, y `~/.cache/isla-dinamica/registro.log` sin líneas `ERROR`.
-5. **Ciclo disable/enable:** tras desactivar no deben quedar el botón en el panel, la tarjeta en `uiGroup`, los métodos reemplazados de GNOME ni el reloj de Ubuntu oculto.
-6. **Documentación:** si cambian capas, estados, tiempos, gestos o ajustes, se actualizan `ARQUITECTURA.md` y `LOGICA_Y_FLUJO.md` en el mismo cambio.
+```bash
+npm run probar:todo
+```
+
+Debe terminar con **✔ Todo correcto**. Ejecuta, en orden:
+
+1. **ESLint** (`eslint.config.js`): errores comunes y reglas del proyecto. Falla si hay `console.*` fuera de `registro.js`, un `catch {}` vacío o una llamada a `ease()` / `ease_property()` fuera de `ui/movimiento.js`.
+2. **Esquema:** `glib-compile-schemas --strict schemas/`.
+3. **Pruebas unitarias** (`pruebas/unitarias/`): controlador, protocolo de los AirPods, reconocedor de apps, temporizador y coincidencia entre el esquema y `ajustes.js`. Corren con `gjs -m`, fuera del Shell, y usan una caché temporal para no tocar el registro real.
+4. **GNOME Shell aislado** (`pruebas/aislado/`): activa la isla, muestra una alerta, la desactiva y comprueba que no queda nada (cápsula, tarjeta, reloj oculto, métodos reemplazados de GNOME), la reactiva y revisa que no haya `JS ERROR` ni líneas `ERROR` en el registro.
+
+Además:
+
+* **Lógica nueva** en el controlador o en un módulo puro → añade casos en `pruebas/unitarias/`. Un archivo nuevo debe terminar en `.prueba.js` y usar `ejecutar()` / `prueba()` de `pruebas/utilidades.js`.
+* **Limpieza nueva** en `disable()` (otra señal, otro método reemplazado) → añade la comprobación en `pruebas/aislado/prueba-isla@local/extension.js`.
+* **Unidades del touchpad:** Clutter entrega el desplazamiento suave en *unidades* (px ÷ 10). Un umbral de 2,2 equivale a ~22 px. Al simular gestos con un dispositivo virtual, enviar valores realistas.
+* **Licencia:** todo archivo nuevo empieza con la cabecera
+  ```javascript
+  // SPDX-License-Identifier: GPL-2.0-or-later
+  // SPDX-FileCopyrightText: 2026 JuniorArias02
+  ```
+* **Documentación:** si cambian capas, estados, tiempos, gestos o ajustes, se actualizan `ARQUITECTURA.md` y `LOGICA_Y_FLUJO.md` en el mismo cambio.
 
 ---
 

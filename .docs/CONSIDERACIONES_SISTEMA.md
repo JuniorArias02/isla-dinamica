@@ -44,7 +44,7 @@ Estas piezas no son API pública y pueden cambiar en cualquier versión. Son lo 
 
 ### Al salir una versión nueva de GNOME
 
-1. Probar la extensión en un GNOME Shell aislado (ver más abajo).
+1. Ejecutar `npm run probar:todo` en la versión nueva.
 2. Revisar `~/.cache/isla-dinamica/registro.log`: no debe haber líneas `ERROR`, sobre todo en notificaciones, OSD, reloj y privacidad.
 3. Si todo funciona, añadir la versión en `metadata.json` (por ejemplo `"shell-version": ["50", "51"]`) y actualizar esta tabla y el README.
 
@@ -79,31 +79,21 @@ dbus-run-session gnome-shell --devkit --wayland
 
 ### GNOME Shell aislado
 
-Un GNOME sin pantalla, con bus de sesión, configuración, datos y caché propios. No afecta a la sesión real y sirve para comprobar que la extensión carga sin errores y para hacer capturas desde una extensión de prueba.
+Un GNOME sin pantalla, con bus de sesión, configuración, datos y caché propios. No afecta a la sesión real.
 
 ```bash
-PRUEBA=$(mktemp -d)
-mkdir -p "$PRUEBA"/{cfg,cache,data/gnome-shell/extensions}
-ln -s "$PWD" "$PRUEBA/data/gnome-shell/extensions/isla-dinamica@juniorarias02"
-
-env -u WAYLAND_DISPLAY -u DISPLAY \
-    XDG_CONFIG_HOME="$PRUEBA/cfg" XDG_DATA_HOME="$PRUEBA/data" XDG_CACHE_HOME="$PRUEBA/cache" \
-    dbus-run-session -- bash -c '
-        gsettings set org.gnome.shell disable-user-extensions false
-        gsettings set org.gnome.shell enabled-extensions "[\"isla-dinamica@juniorarias02\"]"
-        timeout 20 gnome-shell --headless --wayland --no-x11 --virtual-monitor 1280x720' 2>&1 \
-    | grep -E "isla-dinamica|JS ERROR"
-
-cat "$PRUEBA/cache/isla-dinamica/registro.log"
+./pruebas/aislado/aislado.sh
 ```
 
-Se ejecuta desde la raíz del repositorio. Debe aparecer `Extensión activa.` y ningún `JS ERROR`.
+El script enlaza la extensión y una extensión de prueba (`pruebas/aislado/prueba-isla@local/`) en una carpeta temporal, arranca `gnome-shell --headless` con `dbus-run-session` y muestra el resultado de cada comprobación. Termina con error si alguna falla, si hay un `JS ERROR` o si el registro de la isla contiene líneas `ERROR`.
 
-**Pruebas con interacción:** se puede añadir al mismo directorio una segunda extensión de prueba que, en su `enable()`:
+Para probar algo nuevo, la extensión de prueba puede:
 
-* acceda a la isla con `Main.extensionManager.lookup('isla-dinamica@juniorarias02').stateObj` para simular estados (por ejemplo `ext._controlador.actualizarPrivacidad({...})`);
-* cree un puntero o teclado virtual con `Clutter.get_default_backend().get_default_seat().create_virtual_device(...)`;
-* haga capturas con `Shell.Screenshot.screenshot_area(...)`.
+* acceder a la isla con `Main.extensionManager.lookup('isla-dinamica@juniorarias02').stateObj` y simular estados (por ejemplo `isla._controlador.actualizarPrivacidad({...})`);
+* crear un puntero o teclado virtual con `Clutter.get_default_backend().get_default_seat().create_virtual_device(...)`;
+* hacer capturas con `Shell.Screenshot.screenshot_area(...)`.
+
+> Al desactivar y reactivar la isla, GNOME también reinicia las extensiones que se activaron después de ella, incluida la de prueba. Por eso la prueba usa una bandera para ejecutarse una sola vez.
 
 Limitaciones del entorno aislado:
 

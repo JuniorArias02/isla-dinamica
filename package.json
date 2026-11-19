@@ -1,0 +1,20 @@
+{
+  "name": "isla-dinamica",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Isla dinámica para GNOME Shell 50",
+  "author": "JuniorArias02",
+  "license": "GPL-2.0-or-later",
+  "type": "module",
+  "scripts": {
+    "revisar": "eslint .",
+    "corregir": "eslint . --fix",
+    "probar": "./pruebas/ejecutar.sh",
+    "probar:todo": "./pruebas/ejecutar.sh --aislado"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^17.14.0"
+  }
+}

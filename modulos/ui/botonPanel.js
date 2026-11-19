@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 JuniorArias02
+
 /**
  * BotonPanel — el elemento que se inserta en el panel superior de GNOME.
  * Contiene la cápsula (Pildora) y la burbuja de los auriculares.

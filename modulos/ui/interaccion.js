@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 JuniorArias02
+
 /**
  * GestorInteraccion — traduce lo que hace el usuario con el puntero en
  * intenciones para la isla. No dibuja nada.

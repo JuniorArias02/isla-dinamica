@@ -1,0 +1,6 @@
+{
+  "name": "Prueba de la Isla Dinámica",
+  "description": "Solo para pruebas en un GNOME Shell aislado. No instalar.",
+  "uuid": "prueba-isla@local",
+  "shell-version": ["50"]
+}

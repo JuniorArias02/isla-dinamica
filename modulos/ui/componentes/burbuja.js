@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-FileCopyrightText: 2026 JuniorArias02
+
 /**
  * Burbuja — el círculo que se separa de la cápsula, como la isla del iPhone
  * cuando hay dos actividades a la vez. Muestra la actividad SECUNDARIA:

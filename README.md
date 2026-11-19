@@ -140,6 +140,7 @@ isla-dinamica/
 ├── stylesheet.css
 ├── schemas/              Opciones (GSettings)
 ├── recursos/iconos/      Iconos propios
+├── pruebas/              Pruebas unitarias y de carga en un GNOME aislado
 ├── modulos/
 │   ├── constantes.js     Tiempos, tamaños, prioridades y estados
 │   ├── ajustes.js        Acceso a las opciones del usuario
@@ -149,6 +150,23 @@ isla-dinamica/
 │   └── ui/               Cápsula, isla, vistas y componentes
 └── .docs/                Documentación técnica
 ```
+
+---
+
+## Desarrollo
+
+Requisitos: `gjs` (viene con GNOME) y, para la revisión del código, Node.js con npm.
+
+```bash
+npm install              # una sola vez: instala ESLint
+npm run probar           # revisión del código + esquema + pruebas unitarias (~10 s)
+npm run probar:todo      # lo anterior + carga real en un GNOME Shell aislado (~30 s)
+npm run revisar          # solo la revisión del código
+```
+
+Sin npm, `./pruebas/ejecutar.sh` también funciona (comprueba la sintaxis en lugar de usar ESLint).
+
+Antes de enviar un cambio, `npm run probar:todo` debe terminar con **✔ Todo correcto**.
 
 ---
 
@@ -162,6 +180,14 @@ isla-dinamica/
 | [CONSIDERACIONES_SISTEMA.md](.docs/CONSIDERACIONES_SISTEMA.md) | Compatibilidad, pruebas y depuración |
 
 Antes de modificar el código, lee **REGLAS_Y_ESTANDARES.md**.
+
+---
+
+## Licencia
+
+Copyright © 2026 JuniorArias02.
+
+Este programa es software libre: puedes redistribuirlo y modificarlo bajo los términos de la **Licencia Pública General de GNU, versión 2 o posterior** (GPL-2.0-or-later). El texto completo está en [LICENSE](LICENSE).
 
 ---
 

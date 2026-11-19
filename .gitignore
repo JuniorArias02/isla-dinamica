@@ -1,6 +1,9 @@
 # Esquema compilado: se genera con `glib-compile-schemas schemas/`
 schemas/gschemas.compiled
 
+# Dependencias de desarrollo (ESLint): se instalan con `npm install`
+node_modules/
+
 # Paquetes generados con `gnome-extensions pack`
 *.shell-extension.zip
 
