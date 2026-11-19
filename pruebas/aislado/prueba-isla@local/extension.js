@@ -7,6 +7,7 @@
  * desactiva sin dejar nada atrás. Escribe sus resultados con el prefijo [prueba].
  */
 
+import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -77,6 +78,54 @@ export default class PruebaIsla extends Extension {
         comprobar(isla._isla._tarjeta.visible, 'una alerta abre la tarjeta flotante');
         isla._controlador.descartarAlerta('prueba');
         await esperar(1000);
+
+        // Morfosis con contenido que cambia de tamaño: volumen y la página de música.
+        // aislado.sh revisa después que GNOME no avise de actores sin tamaño válido.
+        isla._controlador.agregarAlerta({
+            tipo: 'indicador',
+            clave: 'indicador',
+            duracionMs: 1500,
+            sinCola: true,
+            datos: {tipo: 'volumen', gicon: new Gio.ThemedIcon({name: 'audio-volume-high-symbolic'}), nivel: 0.6, maximo: 1},
+        });
+        await esperar(2500);
+        comprobar(!isla._isla._tarjeta.visible, 'la alerta de volumen se abre y se cierra');
+
+        isla._controlador.actualizarPista({
+            titulo: 'Canción de prueba', artista: 'Artista', album: '', aplicacion: 'Reproductor',
+            reproduciendo: true, duracionUs: 200_000_000, puedeBuscar: true, puedeAlternar: true,
+            puedeSiguiente: true, puedeAnterior: true, puedeMostrar: false, urlCaratula: null,
+            nombreBus: 'org.mpris.MediaPlayer2.prueba', entradaEscritorio: null,
+        });
+        isla._controlador.establecerActividadPreferida('musica');
+        isla._controlador.establecerExpandido(true);
+        await esperar(1500);
+        isla._controlador.establecerExpandido(false);
+        await esperar(1500);
+        comprobar(!isla._isla._tarjeta.visible, 'la isla abierta en Música se cierra del todo');
+
+        // "No molestar" por la vía real (lo mismo que el interruptor de Ajustes rápidos).
+        const notificaciones = new Gio.Settings({schema_id: 'org.gnome.desktop.notifications'});
+        notificaciones.set_boolean('show-banners', false);
+        await esperar(800);
+        const alerta = isla._controlador.alertaActual;
+        comprobar(alerta?.tipo === 'modo' && alerta.datos.activo, 'activar "No molestar" muestra su aviso');
+        notificaciones.set_boolean('show-banners', true);
+        await esperar(3000);
+
+        // Menú del clic derecho y ventana de ajustes.
+        isla._isla._abrirMenu();
+        await esperar(400);
+        comprobar(isla._isla._menu.abierto, 'el clic derecho abre el menú');
+        isla._isla._menu.alternar();
+        await esperar(400);
+        isla._isla._acciones.abrirAjustes();
+        let ventanaAjustes = false;
+        for (let intento = 0; intento < 20 && !ventanaAjustes; intento++) {
+            await esperar(500);
+            ventanaAjustes = global.get_window_actors().some(a => a.meta_window.get_title() === 'Isla Dinámica');
+        }
+        comprobar(ventanaAjustes, '"Ajustes de la isla" abre la ventana de ajustes');
 
         isla._controlador.actualizarPrivacidad({microfono: true, camara: false, pantalla: false});
         await esperar(300);

@@ -20,6 +20,9 @@
  * queda en el registro con su contexto (ver modulos/registro.js).
  */
 
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {
@@ -32,12 +35,14 @@ import {
     TIEMPO_ALERTA_ENERGIA_MS,
     TIEMPO_ALERTA_PORTAPAPELES_MS,
     TIEMPO_ALERTA_TEMPORIZADOR_MS,
+    TIEMPO_ALERTA_MODO_MS,
     ESTADOS_TEMPORIZADOR,
 } from './modulos/constantes.js';
 import {
     iniciarRegistro,
     detenerRegistro,
     registrarInfo,
+    registrarAviso,
     registrarError,
     protegido,
     intentar,
@@ -54,6 +59,7 @@ import {MonitorEnergia, EVENTOS_ENERGIA} from './modulos/servicios/energia.js';
 import {Temporizador} from './modulos/servicios/temporizador.js';
 import {MonitorPortapapeles} from './modulos/servicios/portapapeles.js';
 import {MonitorPrivacidad} from './modulos/servicios/privacidad.js';
+import {MonitorModos} from './modulos/servicios/modos.js';
 import {IslaUI} from './modulos/ui/isla.js';
 import {configurarIconos, liberarIconos} from './modulos/ui/iconos.js';
 import {
@@ -86,6 +92,9 @@ export default class ExtensionIslaDinamica extends Extension {
      */
     disable() {
         registrarInfo('Desactivando extensión y liberando memoria...', true);
+
+        intentar('desactivar modos', () => this._modos?.destruir());
+        this._modos = null;
 
         intentar('desactivar privacidad', () => this._privacidad?.destruir());
         this._privacidad = null;
@@ -165,6 +174,10 @@ export default class ExtensionIslaDinamica extends Extension {
             },
             establecerModoRuido: protegido('airpods: cambiar modo de ruido',
                 (ruta, modo) => this._airpods?.establecerModoRuido(ruta, modo)),
+            // Menú del clic derecho en la cápsula.
+            establecerNoMolestar: protegido('menú: No molestar', activo => this._modos?.establecerNoMolestar(activo)),
+            abrirAjustes: protegido('menú: abrir ajustes', () => this.openPreferences()),
+            abrirRegistro: protegido('menú: abrir registro de errores', () => this._abrirRegistro()),
             notificaciones: {
                 activar: protegido('notificaciones: abrir', id => {
                     this._buscarNotificacion(id)?.activar();
@@ -223,6 +236,8 @@ export default class ExtensionIslaDinamica extends Extension {
             protegido('portapapeles → controlador', datos => this._alCopiar(datos)));
         this._privacidad = new MonitorPrivacidad(
             protegido('privacidad → controlador', estado => this._controlador?.actualizarPrivacidad(estado)));
+        this._modos = new MonitorModos(
+            protegido('modos → controlador', (modo, activo, estado) => this._alCambiarModo(modo, activo, estado)));
 
         // Primero lo que puede fallar por API de GNOME, luego los servicios.
         this._isla.montar(this.uuid);
@@ -232,6 +247,9 @@ export default class ExtensionIslaDinamica extends Extension {
         this._osd.iniciar();
         this._portapapeles.iniciar();
         this._privacidad.iniciar();
+        this._modos.iniciar()
+            .then(() => this._controlador?.actualizarModos(this._modos.estado))
+            .catch(error => registrarError('iniciar modos (No molestar, modo avión)', error));
         this._energia.iniciar().catch(error => registrarError('iniciar energía (UPower)', error));
 
         this._multimedia.iniciar().catch(error => registrarError('iniciar multimedia', error));
@@ -411,6 +429,35 @@ export default class ExtensionIslaDinamica extends Extension {
             sinCola: true,
             datos,
         });
+    }
+
+    /**
+     * Se activó o desactivó "No molestar" o el modo avión.
+     * @param {string} modo - Uno de MODOS.
+     * @param {boolean} activo
+     * @param {{noMolestar: boolean, avion: boolean}} estado
+     */
+    _alCambiarModo(modo, activo, estado) {
+        this._controlador?.actualizarModos(estado);
+        if (!ajuste(AJUSTES.AVISAR_MODOS))
+            return;
+        this._controlador?.agregarAlerta({
+            tipo: TIPOS_ALERTA.MODO,
+            clave: 'modo',
+            duracionMs: TIEMPO_ALERTA_MODO_MS,
+            sinCola: true,
+            datos: {modo, activo},
+        });
+    }
+
+    /** Abre el registro de errores con el editor de texto predeterminado. */
+    _abrirRegistro() {
+        const ruta = rutaRegistro();
+        if (!GLib.file_test(ruta, GLib.FileTest.EXISTS)) {
+            registrarAviso('El registro de errores todavía no existe: no hay nada que mostrar.');
+            return;
+        }
+        Gio.AppInfo.launch_default_for_uri(GLib.filename_to_uri(ruta, null), null);
     }
 
     _buscarNotificacion(id) {

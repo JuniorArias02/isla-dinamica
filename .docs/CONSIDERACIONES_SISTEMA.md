@@ -115,6 +115,16 @@ journalctl -f -o cat /usr/bin/gnome-shell | grep -i isla-dinamica
 
 Los mensajes de depuración (`registrarDepuracion`) solo aparecen con `G_MESSAGES_DEBUG`. El prefijo `[isla-dinamica]` va sin tildes para poder filtrarlo con `grep`.
 
+### Avisos de Mutter sobre la isla
+
+Algunos problemas no pasan por nuestro registro: los avisa Mutter en el journal. Conviene revisarlos de vez en cuando:
+
+```bash
+journalctl -b -o cat /usr/bin/gnome-shell | grep -E "Gjs_(ui|vistas|componentes)_" | sort | uniq -c | sort -rn | head
+```
+
+`Can't update stage views actor [Gjs_...] is on because it needs an allocation` indica un actor que cambia de tamaño durante el cálculo de tamaños (ver REGLAS, sección 3).
+
 ### Ventana de ajustes
 
 ```bash
@@ -159,3 +169,5 @@ busctl --user list | grep mpris
 
 * La cápsula y el círculo son un botón del panel, en el centro, donde estaba el reloj (`Main.panel.addToStatusArea(..., 'center')`).
 * La isla grande es un actor de `Main.layoutManager.addTopChrome`, para flotar sobre las ventanas maximizadas sin reservar espacio.
+* Con varias pantallas, todo va en el **monitor principal** (donde GNOME pone el panel). Al conectar o desconectar un monitor, la isla abierta salta junto a la cápsula (ver ARQUITECTURA, 4.5).
+* Para probar varias pantallas en el GNOME aislado: `--virtual-monitor 1280x720 --virtual-monitor 1280x720`. El monitor principal se cambia con `org.gnome.Mutter.DisplayConfig.ApplyMonitorsConfig` (método 1 = temporal).

@@ -12,7 +12,7 @@ Capas de la extensión, responsabilidad de cada archivo, flujo de datos e integr
 ┌──────────────────────────────────────────────────────────────────────────┐
 │  CAPA 1: PRESENTACIÓN  (modulos/ui/)                                     │
 │  IslaUI (fachada) → BotonPanel, TarjetaFlotante, Vistas, Componentes     │
-│  GestorInteraccion: puntero, clics, arrastres, deslizamientos            │
+│  GestorInteraccion: puntero, clics, arrastres · MenuContextual           │
 └───────────────▲──────────────────────────────────────┬───────────────────┘
                 │ vista (objeto plano)                 │ acciones del usuario
                 │ mostrarVista(vista)                  │ (abrir, cerrar, pulsar...)
@@ -25,7 +25,7 @@ Capas de la extensión, responsabilidad de cada archivo, flujo de datos e integr
 ┌───────────────┴──────────────────────────────────────────────────────────┐
 │  CAPA 3: SERVICIOS  (modulos/servicios/)                                 │
 │  Bluetooth · AirPods · Multimedia · Notificaciones · Reloj · OSD         │
-│  Energía · Temporizador · Portapapeles · Privacidad                      │
+│  Energía · Temporizador · Portapapeles · Privacidad · Modos              │
 └───────────────▲──────────────────────────────────────────────────────────┘
                 │ D-Bus / API de GNOME Shell y Mutter
 ┌───────────────┴──────────────────────────────────────────────────────────┐
@@ -85,6 +85,7 @@ extension.js = raíz de composición: crea las piezas y las conecta. No tiene l�
     │   ├── temporizador.js       Temporizador propio (iniciar, pausar, +1 min, alarma)
     │   ├── portapapeles.js       MonitorPortapapeles: "Copiado" (tipo y app, nunca el contenido)
     │   ├── privacidad.js         MonitorPrivacidad: micrófono, cámara y pantalla en uso
+    │   ├── modos.js              MonitorModos: "No molestar" y modo avión
     │   └── airpods/              Protocolo de Apple (AAP): batería por pieza, estuche, oído, modo de ruido
     │       ├── protocolo.js      Puro: interpreta y construye paquetes
     │       ├── perfilBluez.js    PerfilAap (org.bluez.Profile1) + SesionAap (canal L2CAP 0x1001)
@@ -93,6 +94,7 @@ extension.js = raíz de composición: crea las piezas y las conecta. No tiene l�
         ├── isla.js               IslaUI: fachada. Lo único que ve extension.js
         ├── interaccion.js        GestorInteraccion: clic, arrastre, deslizamiento, cierre automático
         ├── tarjetaFlotante.js    TarjetaFlotante: la isla grande, con morfosis desde la cápsula
+        ├── menuContextual.js     MenuContextual: menú del clic derecho (PopupMenu de GNOME)
         ├── botonPanel.js         BotonPanel: elemento del panel (Pildora + Burbuja)
         ├── iconos.js             Catálogo de iconos propios + icono a color de apps
         ├── movimiento.js         Motor de movimiento: animar(), resortes, entrada/salida de contenido
@@ -105,6 +107,7 @@ extension.js = raíz de composición: crea las piezas y las conecta. No tiene l�
         │   ├── anilloBateria.js  IndicadorBateria: aro con colores de batería
         │   ├── caratula.js       Portada redondeada o circular
         │   ├── onda.js           Barras de audio animadas
+        │   ├── barraNivel.js     BarraNivel: barra con relleno proporcional (fraccion animable)
         │   ├── barraProgreso.js  Tiempo y barra de la pista (clic para saltar)
         │   ├── botonControl.js   Botón multimedia con efecto de pulsación
         │   ├── bateriasAirpods.js Tres anillos (izquierdo, derecho, estuche)
@@ -118,6 +121,7 @@ extension.js = raíz de composición: crea las piezas y las conecta. No tiene l�
             ├── alertaEnergia.js         Cargando / usando batería
             ├── alertaPortapapeles.js    "Copiado"
             ├── alertaTemporizador.js    "¡Tiempo cumplido!"
+            ├── alertaModo.js            "No molestar" / modo avión
             ├── vistaExpandida.js        Cabecera con fecha + carrusel
             ├── paginaMusica.js
             ├── paginaNotificaciones.js  Recientes agrupadas por chat
@@ -156,7 +160,7 @@ Usuario ──clic/arrastre/deslizamiento──▶ GestorInteraccion ──▶ I
 La **vista** es un objeto plano:
 
 ```javascript
-{estado, alerta, pista, dispositivos, reloj, notificaciones, temporizador, privacidad, actividades}
+{estado, alerta, pista, dispositivos, reloj, notificaciones, temporizador, privacidad, modos, actividades}
 ```
 
 La UI debe poder dibujarse completa solo con ella.
@@ -220,7 +224,26 @@ Los parámetros están en `RESORTES` (`constantes.js`); la tabla está en [LOGIC
 | `ALERTA` | Sin cambios (queda debajo) | La vista de la alerta (300–380 px) |
 | `EXPANDIDO` | Sin cambios (queda debajo) | `VistaExpandida`: fecha y hora + carrusel (420 px) |
 
-### 4.5 Reloj de Ubuntu
+### 4.5 Varias pantallas
+
+* La isla vive en el panel, que GNOME coloca en el **monitor principal**. `TarjetaFlotante._limitarX` usa `Main.layoutManager.primaryMonitor`, no la pantalla 0.
+* Al conectar o desconectar un monitor, o al cambiar el principal, GNOME emite `monitors-changed` y mueve el panel. `IslaUI` espera al siguiente momento libre (`global.compositor.get_laters()`, tipo `IDLE`), cuando las posiciones ya están recalculadas, y llama a `TarjetaFlotante.recolocar()`: la isla abierta salta junto a la cápsula sin animación, y si se estaba cerrando el cierre termina en el acto.
+
+### 4.6 Menú del clic derecho
+
+`MenuContextual` usa `PopupMenu.PopupMenu` de GNOME con su propio `PopupMenuManager`, que lo cierra con Esc o con un clic fuera. No se usa `PanelMenu.Button.setMenu()`, porque abriría el menú también con el clic izquierdo. Lo abre un `Clutter.ClickGesture` con `required_button: BUTTON_SECONDARY`, puesto en la cápsula **y** en la tarjeta (con la isla abierta, la tarjeta tapa la cápsula). Si la isla estaba abierta, se cierra al abrir el menú.
+
+| Opción | Acción |
+| :--- | :--- |
+| No molestar (interruptor) | `acciones.establecerNoMolestar` → `MonitorModos.establecerNoMolestar` |
+| Ajustes de la isla | `acciones.abrirAjustes` → `Extension.openPreferences()` |
+| Registro de errores | `acciones.abrirRegistro` → abre `registro.log` con la app predeterminada |
+
+### 4.7 Barras de nivel
+
+Las barras de volumen/brillo y de progreso de la canción son `BarraNivel`: el ancho del relleno se calcula **dentro** de `vfunc_allocate` a partir de la propiedad GObject `fraccion`, que se anima con `animarPropiedad()`. Antes se ajustaba el relleno desde `notify::width`, que pedía un nuevo cálculo de tamaños en medio del actual: Mutter avisaba `Can't update stage views ... needs an allocation` en cada fotograma de la morfosis y las animaciones de la tarjeta podían congelarse.
+
+### 4.8 Reloj de Ubuntu
 
 La isla ocupa el lugar del reloj y muestra la hora. Con el ajuste `ocultar-reloj-gnome`, `IslaUI` oculta **solo el texto** del reloj de GNOME (`dateMenu._clockDisplay`) y lo vuelve a mostrar en `disable()` o al desactivar el ajuste. El botón original se mantiene porque abre el calendario y el historial de notificaciones. La fecha de la vista expandida también lo abre (`Main.panel.toggleCalendar()`).
 
@@ -338,6 +361,17 @@ Con "No molestar" desactivado, esa vía se ignora y todo pasa por `_showNotifica
 
 ---
 
+### 5.10 Modos (modos.js)
+
+| Modo | Fuente |
+| :--- | :--- |
+| No molestar | GSettings `org.gnome.desktop.notifications` → `show-banners` (`false` = activado) |
+| Modo avión | `org.gnome.SettingsDaemon.Rfkill` (bus de sesión) → `AirplaneMode` o `HardwareAirplaneMode` |
+
+Solo avisa en el **cambio** (el estado al arrancar no genera alerta). `extension.js` actualiza `vista.modos` (lo refleja el menú) y, con el ajuste `avisar-modos`, lanza la alerta `MODO` (sin cola). Si el servicio de radio no existe, el modo avión no se vigila y queda un aviso en el registro.
+
+---
+
 ## 6. Interacción
 
 Toda la lógica de puntero vive en `ui/interaccion.js` (`GestorInteraccion`):
@@ -395,4 +429,5 @@ prefs.js (otro proceso) ──escribe──▶ GSettings ◀──lee en el mome
 | `mostrar-volumen-brillo` | `true` | Volumen y brillo en la isla |
 | `avisar-cargador` | `true` | Aviso del cargador |
 | `avisar-copiado` | `true` | Aviso de "Copiado" |
+| `avisar-modos` | `true` | Aviso de "No molestar" y modo avión |
 | `mostrar-privacidad` | `true` | Puntos de privacidad |

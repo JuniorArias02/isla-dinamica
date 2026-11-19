@@ -43,7 +43,8 @@ export class GestorInteraccion {
      *   abrir(), cerrar(), pulsar(), mantenerAlerta(bool),
      *   cambiarVista(direccion) (+1 siguiente, -1 anterior),
      *   seguirArrastreCapsula(dx) / soltarArrastreCapsula() (la cápsula sigue al ratón),
-     *   descartarDeslizando() (cerrar la isla o quitar la alerta con un gesto)
+     *   descartarDeslizando() (cerrar la isla o quitar la alerta con un gesto),
+     *   abrirMenu() (clic derecho en la cápsula)
      */
     constructor({boton, tarjeta, intenciones}) {
         this._boton = boton;
@@ -94,6 +95,8 @@ export class GestorInteraccion {
         Main.overview.disconnectObject(this);
 
         this._boton.remove_action(this._gestoBoton);
+        this._boton.remove_action(this._gestoMenu);
+        this._tarjeta.remove_action(this._gestoMenuTarjeta);
         this._tarjeta.remove_action(this._gestoTarjeta);
         this._tarjeta.remove_action(this._gestoArrastre);
         this._boton.remove_action(this._gestoArrastreCapsula);
@@ -107,13 +110,29 @@ export class GestorInteraccion {
         const pulsar = protegido('interacción: clic', () => this._alPulsar());
         const cerrar = protegido('interacción: cerrar por foco', () => this._cerrarSiAbierta());
 
-        this._gestoBoton = new Clutter.ClickGesture();
+        // Clic izquierdo: abrir la isla. Clic derecho: menú (ajustes, No molestar).
+        this._gestoBoton = new Clutter.ClickGesture({required_button: Clutter.BUTTON_PRIMARY});
         this._gestoBoton.connect('recognize', pulsar);
         this._boton.add_action(this._gestoBoton);
 
+        // Con la isla abierta, la tarjeta tapa la cápsula: el clic derecho también vale sobre ella.
+        const pedirMenu = protegido('interacción: clic derecho', () => this._alPedirMenu());
+        this._gestoMenu = new Clutter.ClickGesture({
+            required_button: Clutter.BUTTON_SECONDARY,
+            recognize_on_press: true,
+        });
+        this._gestoMenu.connect('recognize', pedirMenu);
+        this._boton.add_action(this._gestoMenu);
+        this._gestoMenuTarjeta = new Clutter.ClickGesture({
+            required_button: Clutter.BUTTON_SECONDARY,
+            recognize_on_press: true,
+        });
+        this._gestoMenuTarjeta.connect('recognize', pedirMenu);
+        this._tarjeta.add_action(this._gestoMenuTarjeta);
+
         // En la tarjeta solo se usa el clic mientras muestra una alerta;
         // en la vista expandida los botones internos reciben sus propios clics.
-        this._gestoTarjeta = new Clutter.ClickGesture();
+        this._gestoTarjeta = new Clutter.ClickGesture({required_button: Clutter.BUTTON_PRIMARY});
         this._gestoTarjeta.connect('recognize', pulsar);
         this._gestoTarjeta.enabled = false;
         this._tarjeta.add_action(this._gestoTarjeta);
@@ -158,6 +177,12 @@ export class GestorInteraccion {
         // encima no debe abrir la isla: hay que sacarlo y volver a entrar.
         this._requiereSalir = true;
         this._intenciones?.pulsar();
+    }
+
+    _alPedirMenu() {
+        this._cancelar('_idApertura');
+        this._requiereSalir = true;
+        this._intenciones?.abrirMenu();
     }
 
     /** @returns {boolean} true si solo se ve la cápsula (sin alerta ni isla abierta). */

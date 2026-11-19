@@ -62,6 +62,17 @@ export const TIPOS_ALERTA = Object.freeze({
     TEMPORIZADOR: 'temporizador',
     /** Se copió algo al portapapeles. */
     PORTAPAPELES: 'portapapeles',
+    /** Se activó o desactivó "No molestar" o el modo avión. */
+    MODO: 'modo',
+});
+
+/**
+ * Modos del sistema que la isla anuncia al cambiar.
+ * @enum {string}
+ */
+export const MODOS = Object.freeze({
+    NO_MOLESTAR: 'no-molestar',
+    AVION: 'avion',
 });
 
 /**
@@ -73,6 +84,7 @@ export const PRIORIDADES = Object.freeze({
     [TIPOS_ALERTA.INDICADOR]: 5,
     [TIPOS_ALERTA.TEMPORIZADOR]: 4,
     [TIPOS_ALERTA.PORTAPAPELES]: 4,
+    [TIPOS_ALERTA.MODO]: 4,
     [TIPOS_ALERTA.NOTIFICACION]: 3,
     [TIPOS_ALERTA.BLUETOOTH]: 2,
     [TIPOS_ALERTA.ENERGIA]: 2,
@@ -102,6 +114,9 @@ export const TIEMPO_ALERTA_ENERGIA_MS = 3000;
 
 /** Tiempo en pantalla de "Copiado". */
 export const TIEMPO_ALERTA_PORTAPAPELES_MS = 1600;
+
+/** Tiempo en pantalla del aviso de "No molestar" / modo avión. */
+export const TIEMPO_ALERTA_MODO_MS = 2200;
 
 /** Tiempo en pantalla de "Tiempo cumplido" (si no se descarta antes). */
 export const TIEMPO_ALERTA_TEMPORIZADOR_MS = 20000;

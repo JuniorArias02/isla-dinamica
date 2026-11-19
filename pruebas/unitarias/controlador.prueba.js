@@ -172,6 +172,22 @@ ejecutar('Controlador', async () => {
         controlador.destruir();
     });
 
+    await prueba('el estado de los modos llega a la vista', () => {
+        const {controlador, registro} = crear();
+        controlador.actualizarModos({noMolestar: true, avion: false});
+        igual(registro.vista.modos, {noMolestar: true, avion: false});
+        controlador.destruir();
+    });
+
+    await prueba('el aviso de un modo es "sin cola": con la isla abierta no aparece después', () => {
+        const {controlador} = crear();
+        controlador.establecerExpandido(true);
+        controlador.agregarAlerta({tipo: 'modo', clave: 'modo', duracionMs: 2000, datos: {}, sinCola: true});
+        controlador.establecerExpandido(false);
+        igual(controlador.alertaActual, null);
+        controlador.destruir();
+    });
+
     await prueba('el estado de privacidad llega a la vista', () => {
         const {controlador, registro} = crear();
         igual(registro.vista?.privacidad ?? {microfono: false, camara: false, pantalla: false},

@@ -16,7 +16,7 @@ import St from 'gi://St';
 
 import {TIPOS_INDICADOR} from '../../constantes.js';
 import {aparecerConRebote} from '../animaciones.js';
-import {animar} from '../movimiento.js';
+import {BarraNivel} from '../componentes/barraNivel.js';
 
 /** Duración del deslizamiento de la barra entre pulsaciones. */
 const DURACION_BARRA_MS = 140;
@@ -28,22 +28,18 @@ class AlertaIndicador extends St.BoxLayout {
 
         this._icono = new St.Icon({style_class: 'isla-indicador-osd-icono', y_align: Clutter.ActorAlign.CENTER});
 
-        this._barra = new St.Widget({
-            style_class: 'isla-indicador-osd-barra',
+        this._barra = new BarraNivel({
+            estiloBarra: 'isla-indicador-osd-barra',
+            estiloRelleno: 'isla-indicador-osd-relleno',
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this._relleno = new St.Widget({style_class: 'isla-indicador-osd-relleno'});
-        this._barra.add_child(this._relleno);
-        this._barra.connect('notify::width', () => this._dibujar(false));
 
         this._porcentaje = new St.Label({style_class: 'isla-indicador-osd-porcentaje', y_align: Clutter.ActorAlign.CENTER});
 
         this.add_child(this._icono);
         this.add_child(this._barra);
         this.add_child(this._porcentaje);
-
-        this._fraccion = 0;
     }
 
     /**
@@ -51,17 +47,20 @@ class AlertaIndicador extends St.BoxLayout {
      */
     actualizar(datos) {
         this._icono.gicon = datos.gicon;
-        this._fraccion = Math.min(1, Math.max(0, datos.nivel / datos.maximo));
         this._porcentaje.text = `${Math.round(datos.nivel * 100)}`;
 
         // Volumen por encima del 100 % (amplificado): relleno naranja de aviso.
         const amplificado = datos.tipo === TIPOS_INDICADOR.VOLUMEN && datos.nivel > 1;
         if (amplificado)
-            this._relleno.add_style_class_name('amplificado');
+            this._barra.relleno.add_style_class_name('amplificado');
         else
-            this._relleno.remove_style_class_name('amplificado');
+            this._barra.relleno.remove_style_class_name('amplificado');
 
-        this._dibujar(true);
+        // La barra se desliza suave a cada pulsación de tecla.
+        this._barra.establecerFraccion(datos.nivel / datos.maximo, {
+            duracionMs: DURACION_BARRA_MS,
+            modo: Clutter.AnimationMode.EASE_OUT_QUAD,
+        });
     }
 
     animarEntrada() {
@@ -70,20 +69,4 @@ class AlertaIndicador extends St.BoxLayout {
 
     /** Otra pulsación de tecla: solo se desliza la barra (ya lo hizo actualizar). */
     animarActualizacion() {}
-
-    _dibujar(conAnimacion) {
-        if (!this._barra.has_allocation())
-            return;
-        const ancho = Math.round(this._barra.get_allocation_box().get_width() * this._fraccion);
-        this._relleno.remove_transition('width');
-        if (conAnimacion) {
-            animar(this._relleno, {
-                width: ancho,
-                duration: DURACION_BARRA_MS,
-                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-            });
-        } else {
-            this._relleno.width = ancho;
-        }
-    }
 });

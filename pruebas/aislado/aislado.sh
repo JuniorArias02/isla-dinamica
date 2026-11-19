@@ -52,6 +52,15 @@ if grep -E "JS ERROR" "$TEMPORAL/shell.log" | grep -qi "isla"; then
     grep -A5 "JS ERROR" "$TEMPORAL/shell.log" | sed 's/^/      /'
     FALLOS=1
 fi
+# Mutter avisa si un actor de la isla queda sin tamaño válido durante un fotograma
+# (sus animaciones pueden congelarse). Nunca debe ocurrir.
+if grep "Can't update stage views" "$TEMPORAL/shell.log" | grep -q "Gjs_"; then
+    echo "  ✘ actores de la isla sin tamaño válido durante una animación:"
+    grep "Can't update stage views" "$TEMPORAL/shell.log" | grep -o "\[Gjs_[A-Za-z_]*\]" | sort | uniq -c | sed 's/^/      /'
+    FALLOS=1
+else
+    echo "  ✔ ningún actor de la isla queda sin tamaño durante las animaciones"
+fi
 REGISTRO="$TEMPORAL/cache/isla-dinamica/registro.log"
 if [ -f "$REGISTRO" ] && grep -q " ERROR " "$REGISTRO"; then
     echo "  ✘ errores en el registro de la isla:"

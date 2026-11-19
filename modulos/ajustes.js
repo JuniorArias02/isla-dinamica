@@ -29,6 +29,7 @@ export const AJUSTES = Object.freeze({
     MOSTRAR_VOLUMEN_BRILLO: 'mostrar-volumen-brillo',
     AVISAR_CARGADOR: 'avisar-cargador',
     AVISAR_COPIADO: 'avisar-copiado',
+    AVISAR_MODOS: 'avisar-modos',
     MOSTRAR_PRIVACIDAD: 'mostrar-privacidad',
 });
 
@@ -47,6 +48,7 @@ const POR_DEFECTO = Object.freeze({
     [AJUSTES.MOSTRAR_VOLUMEN_BRILLO]: true,
     [AJUSTES.AVISAR_CARGADOR]: true,
     [AJUSTES.AVISAR_COPIADO]: true,
+    [AJUSTES.AVISAR_MODOS]: true,
     [AJUSTES.MOSTRAR_PRIVACIDAD]: true,
 });
 

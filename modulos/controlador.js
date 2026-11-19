@@ -43,6 +43,7 @@ import {registrarDepuracion, registrarError} from './registro.js';
  * @property {object[]} notificaciones - Recientes, la más nueva primero.
  * @property {{estado: string, totalMs: number, restanteMs: number}|null} temporizador
  * @property {{microfono: boolean, camara: boolean, pantalla: boolean}} privacidad - Qué se está usando.
+ * @property {{noMolestar: boolean, avion: boolean}} modos - "No molestar" y modo avión.
  * @property {{principal: string, secundaria: string|null, vistas: string[]}} actividades -
  *   Qué va en la cápsula, qué en el círculo y entre qué vistas se puede deslizar (valores de ACTIVIDADES).
  */
@@ -74,6 +75,7 @@ export class ControladorIsla {
 
         /** @type {{microfono: boolean, camara: boolean, pantalla: boolean}} */
         this._privacidad = {microfono: false, camara: false, pantalla: false};
+        this._modos = {noMolestar: false, avion: false};
 
         /** @type {string|null} Actividad que el usuario eligió ver en la cápsula (ACTIVIDADES). */
         this._actividadPreferida = null;
@@ -307,6 +309,15 @@ export class ControladorIsla {
         this._emitirVista();
     }
 
+    /**
+     * Estado de "No molestar" y del modo avión (el menú del clic derecho lo refleja).
+     * @param {{noMolestar: boolean, avion: boolean}} modos
+     */
+    actualizarModos(modos) {
+        this._modos = modos;
+        this._emitirVista();
+    }
+
     /** Vacía la lista de recientes. */
     limpiarNotificaciones() {
         if (this._notificaciones.length === 0)
@@ -454,6 +465,7 @@ export class ControladorIsla {
             notificaciones: this._notificaciones,
             temporizador: this._temporizador,
             privacidad: this._privacidad,
+            modos: this._modos,
             actividades: this._calcularActividades(),
         };
         // Un fallo al dibujar no debe romper la máquina de estados.

@@ -79,6 +79,8 @@ export default class PreferenciasIslaDinamica extends ExtensionPreferences {
             'Aviso al enchufar o desenchufar el cargador del portátil.'));
         avisos.add(this._interruptor(AJUSTES.AVISAR_COPIADO, '"Copiado"',
             'Aviso breve al copiar algo (nunca se muestra lo copiado).'));
+        avisos.add(this._interruptor(AJUSTES.AVISAR_MODOS, '"No molestar" y modo avión',
+            'Aviso breve al activarlos o desactivarlos.'));
         avisos.add(this._interruptor(AJUSTES.MOSTRAR_PRIVACIDAD, 'Puntitos de privacidad',
             'Naranja = micrófono, verde = cámara, rojo = pantalla en uso.'));
         pagina.add(avisos);

@@ -36,6 +36,7 @@ export const ICONOS = Object.freeze({
     TEMPORIZADOR: 'temporizador',
     CHECK: 'check',
     BATERIA: 'bateria',
+    AVION: 'avion',
 });
 
 let rutaIconos = null;

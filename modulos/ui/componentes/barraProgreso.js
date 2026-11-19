@@ -17,7 +17,7 @@ import St from 'gi://St';
 
 import {INTERVALO_PROGRESO_MS} from '../../constantes.js';
 import {protegido} from '../../registro.js';
-import {animar} from '../movimiento.js';
+import {BarraNivel} from './barraNivel.js';
 
 /**
  * Convierte microsegundos a "m:ss".
@@ -54,15 +54,13 @@ class BarraProgreso extends St.BoxLayout {
             reactive: true,
             track_hover: true,
         });
-        this._barra = new St.Widget({
-            style_class: 'isla-barra-progreso',
+        this._barra = new BarraNivel({
+            estiloBarra: 'isla-barra-progreso',
+            estiloRelleno: 'isla-relleno-progreso',
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this._relleno = new St.Widget({style_class: 'isla-relleno-progreso'});
-        this._barra.add_child(this._relleno);
         this._zona.add_child(this._barra);
-        this._barra.connect('notify::width', () => this._dibujar(false));
 
         const gestoClic = new Clutter.ClickGesture();
         gestoClic.connect('recognize', protegido('barra: clic para buscar', () => this._alHacerClic(gestoClic)));
@@ -139,19 +137,9 @@ class BarraProgreso extends St.BoxLayout {
     }
 
     _dibujar(conAnimacion) {
-        // Mientras no esté en pantalla no hay ancho que medir; se redibuja al asignarse tamaño.
-        if (!this._barra.has_allocation())
-            return;
-        const ancho = Math.round(this._barra.get_allocation_box().get_width() * this._fraccion);
-        this._relleno.remove_transition('width');
-        if (conAnimacion) {
-            animar(this._relleno, {
-                width: ancho,
-                duration: INTERVALO_PROGRESO_MS,
-                mode: Clutter.AnimationMode.LINEAR,
-            });
-        } else {
-            this._relleno.width = ancho;
-        }
+        // Avance lineal durante el intervalo de consulta: se ve continuo.
+        this._barra.establecerFraccion(this._fraccion, conAnimacion
+            ? {duracionMs: INTERVALO_PROGRESO_MS, modo: Clutter.AnimationMode.LINEAR}
+            : {});
     }
 });

@@ -62,6 +62,11 @@
       <default>true</default>
       <summary>Avisar al copiar algo</summary>
     </key>
+    <key name="avisar-modos" type="b">
+      <default>true</default>
+      <summary>Avisar de "No molestar" y modo avión</summary>
+      <description>Aviso breve al activar o desactivar "No molestar" o el modo avión.</description>
+    </key>
     <key name="mostrar-privacidad" type="b">
       <default>true</default>
       <summary>Puntitos de privacidad</summary>

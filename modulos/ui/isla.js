@@ -15,6 +15,9 @@
  * intenciones del usuario mediante las acciones que le pasa extension.js.
  */
 
+import GLib from 'gi://GLib';
+import Meta from 'gi://Meta';
+
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {
@@ -25,6 +28,7 @@ import {
     ANCHO_EXPANDIDO_PX,
     ACTIVIDADES,
 } from '../constantes.js';
+import {registrarInfo, protegido} from '../registro.js';
 import {aplastar, aterrizar} from './animaciones.js';
 import {ajuste, alCambiarAjuste, dejarDeEscucharAjustes, AJUSTES} from '../ajustes.js';
 import {BotonPanel} from './botonPanel.js';
@@ -36,6 +40,8 @@ import {AlertaIndicador} from './vistas/alertaIndicador.js';
 import {AlertaEnergia} from './vistas/alertaEnergia.js';
 import {AlertaPortapapeles} from './vistas/alertaPortapapeles.js';
 import {AlertaTemporizador} from './vistas/alertaTemporizador.js';
+import {AlertaModo} from './vistas/alertaModo.js';
+import {MenuContextual} from './menuContextual.js';
 import {VistaExpandida, PAGINAS} from './vistas/vistaExpandida.js';
 
 /** Posición dentro de la zona central del panel (0 = primera, donde estaba el reloj). */
@@ -63,6 +69,9 @@ export class IslaUI {
      * @param {Function} acciones.mantenerAlerta - Recibe true/false.
      * @param {Function} acciones.abrirCalendario - Cierra la isla y abre el calendario de GNOME.
      * @param {Function} acciones.establecerModoRuido - Recibe (ruta, modo) para unos AirPods.
+     * @param {Function} acciones.establecerNoMolestar - Recibe true/false (menú del clic derecho).
+     * @param {Function} acciones.abrirAjustes - Abre la ventana de ajustes.
+     * @param {Function} acciones.abrirRegistro - Abre el registro de errores.
      * @param {object} acciones.notificaciones - {activar(id), descartar(id), limpiar()} de la página de notificaciones.
      * @param {object} acciones.multimedia - alternar, siguiente, anterior, mostrarReproductor, obtenerPosicion.
      * @param {object} acciones.temporizador - iniciar(ms), sumar(ms), pausar(), reanudar(), cancelar().
@@ -77,6 +86,7 @@ export class IslaUI {
         this._vistasHastaMs = Date.now();
         this._claveAlertaMostrada = null;
         this._paginaSolicitada = null;
+        this._idRecolocar = 0;
 
         this._boton = new BotonPanel();
         // Si GNOME destruye la cápsula por su cuenta (ej. al cerrar sesión), la isla deja de dibujar:
@@ -99,6 +109,7 @@ export class IslaUI {
             [TIPOS_ALERTA.ENERGIA]: {vista: new AlertaEnergia(), ancho: ANCHO_ALERTA_PX},
             [TIPOS_ALERTA.PORTAPAPELES]: {vista: new AlertaPortapapeles(), ancho: ANCHO_ALERTA_COMPACTA_PX},
             [TIPOS_ALERTA.TEMPORIZADOR]: {vista: new AlertaTemporizador(), ancho: ANCHO_ALERTA_PX},
+            [TIPOS_ALERTA.MODO]: {vista: new AlertaModo(), ancho: ANCHO_ALERTA_COMPACTA_PX},
         };
         this._expandida = new VistaExpandida({
             multimedia: acciones.multimedia,
@@ -124,6 +135,18 @@ export class IslaUI {
             },
         });
 
+        // Clic derecho en la cápsula: No molestar, ajustes y registro de errores.
+        this._menu = new MenuContextual({
+            fuente: this._boton.pildora,
+            dueno: this._boton,
+            acciones: {
+                establecerNoMolestar: activo => this._acciones.establecerNoMolestar(activo),
+                abrirAjustes: () => this._acciones.abrirAjustes(),
+                abrirRegistro: () => this._acciones.abrirRegistro(),
+            },
+            obtenerModos: () => this._vista.modos ?? {noMolestar: false, avion: false},
+        });
+
         this._interaccion = new GestorInteraccion({
             boton: this._boton,
             tarjeta: this._tarjeta,
@@ -136,6 +159,7 @@ export class IslaUI {
                 seguirArrastreCapsula: dx => this._boton.pildora.seguirArrastre(dx),
                 soltarArrastreCapsula: () => this._boton.pildora.soltarArrastre(),
                 descartarDeslizando: () => this._descartarDeslizando(),
+                abrirMenu: () => this._abrirMenu(),
             },
         });
     }
@@ -154,6 +178,28 @@ export class IslaUI {
         this._relojGnome = Main.panel.statusArea.dateMenu?._clockDisplay ?? null;
         this._aplicarRelojDeGnome(ajuste(AJUSTES.OCULTAR_RELOJ_GNOME));
         alCambiarAjuste(AJUSTES.OCULTAR_RELOJ_GNOME, ocultar => this._aplicarRelojDeGnome(ocultar), this);
+
+        // Se conectó o desconectó una pantalla: la isla sigue a la cápsula a su nuevo sitio.
+        Main.layoutManager.connectObject('monitors-changed',
+            protegido('isla: cambio de pantallas', () => this._alCambiarPantallas()), this);
+    }
+
+    /**
+     * GNOME ya movió el panel, pero las posiciones definitivas existen después del
+     * siguiente cálculo de tamaños: la tarjeta se recoloca cuando el Shell queda libre.
+     */
+    _alCambiarPantallas() {
+        registrarInfo(`Pantallas cambiadas: ${Main.layoutManager.monitors.length} monitor(es), ` +
+            `principal en x=${Main.layoutManager.primaryMonitor?.x ?? '?'}.`);
+        const laters = global.compositor.get_laters();
+        if (this._idRecolocar)
+            laters.remove(this._idRecolocar);
+        this._idRecolocar = laters.add(Meta.LaterType.IDLE, protegido('isla: recolocar tras cambio de pantallas', () => {
+            this._idRecolocar = 0;
+            if (!this._destruida)
+                this._tarjeta.recolocar();
+            return GLib.SOURCE_REMOVE;
+        }));
     }
 
     /**
@@ -191,6 +237,7 @@ export class IslaUI {
         const {estado, alerta, pista, dispositivos} = vista;
 
         this._boton.actualizar(vista);
+        this._menu.actualizarModos(vista.modos);
         if (this._expandida.paginaVisible === PAGINAS.NOTIFICACIONES)
             this._vistasHastaMs = Date.now();
         this._boton.pildora.establecerNoLeidas(this._hayNoLeidas());
@@ -217,12 +264,18 @@ export class IslaUI {
     /** Destruye todo en orden inverso. Se llama desde disable(). */
     destruir() {
         this._destruida = true;
+        Main.layoutManager.disconnectObject(this);
+        if (this._idRecolocar) {
+            global.compositor.get_laters().remove(this._idRecolocar);
+            this._idRecolocar = 0;
+        }
         this._restaurarRelojDeGnome();
         this._interaccion.destruir();
 
         Main.layoutManager.removeChrome(this._tarjeta);
         this._tarjeta.destruir();
 
+        this._menu.destruir();
         Object.values(this._alertas).forEach(({vista}) => vista.destroy());
         this._expandida.destroy();
 
@@ -297,6 +350,13 @@ export class IslaUI {
             return;
         }
         this._abrir();
+    }
+
+    /** Clic derecho en la cápsula: si la isla estaba abierta se cierra y aparece el menú. */
+    _abrirMenu() {
+        if (this._vista.estado === ESTADOS.EXPANDIDO)
+            this._acciones.cerrarTarjeta();
+        this._menu.alternar();
     }
 
     /** Gesto de deslizar sobre la isla grande: cierra la tarjeta o quita la alerta. */

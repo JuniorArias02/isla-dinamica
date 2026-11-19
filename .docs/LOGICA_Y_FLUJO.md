@@ -48,6 +48,7 @@ Implementada en `modulos/controlador.js`:
 | **Cargador** | (debajo) | 380 px: rayo + "Cargando · 64 % · llena en 1 h 20 min" + anillo | Entrada con rebote; el anillo se llena |
 | **Copiado** | (debajo) | 300 px: check verde + "Texto · desde Brave" | El check salta |
 | **¡Tiempo cumplido!** | (debajo) | 380 px: cronómetro naranja + "Listo" | El cronómetro se sacude |
+| **No molestar / modo avión** | (debajo) | 300 px: luna (morado) o avión (naranja) en un círculo + "Activado"; gris con "Desactivado" | El icono salta |
 | **Expandido** | (debajo) | 420 px: fecha y hora + carrusel (*Música*, *Notificaciones*, *Dispositivos*, *Temporizador*) | Morfosis con rebote; la isla adapta su alto a cada página |
 
 ### Puntos de estado en la cápsula
@@ -70,6 +71,7 @@ Siempre visibles a la derecha de la cápsula, muestre lo que muestre:
 | **Clic** en la cápsula | Abre la isla en la página de lo que muestra la cápsula, o en *Notificaciones* si hay mensajes sin ver |
 | **Arrastrar** la cápsula (ratón presionado) o **dos dedos a los lados** | Cambia la vista: hora ↔ música ↔ temporizador. De derecha a izquierda avanza; en los extremos rebota |
 | **Clic** en el círculo | Intercambia actividades: la del círculo pasa a la cápsula |
+| **Clic derecho** en la cápsula o en la isla | Menú: No molestar, Ajustes de la isla, Registro de errores. Si la isla estaba abierta, se cierra |
 | Puntero encima de la cápsula | Nada por defecto. Con el ajuste `abrir-con-puntero`, abre tras `RETARDO_APERTURA_HOVER_MS` |
 | Puntero fuera de la isla abierta | Sigue abierta `tiempo-cierre-ms` y luego se cierra. Volver a entrar cancela el cierre |
 | Puntero sobre una alerta | La alerta no expira; al salir le quedan `TIEMPO_EXTRA_ALERTA_TRAS_HOVER_MS` |
@@ -97,7 +99,7 @@ Varios eventos pueden coincidir (música sonando, llega un mensaje, se conectan 
 
 ```text
 PRIORIDAD 5:  Volumen / brillo                        (sin cola)
-PRIORIDAD 4:  "Copiado" (sin cola) · "¡Tiempo cumplido!"
+PRIORIDAD 4:  "Copiado" (sin cola) · "No molestar" / modo avión (sin cola) · "¡Tiempo cumplido!"
 PRIORIDAD 3:  Notificación
 PRIORIDAD 2:  Auriculares · Cargador
 BASE:         Actividad preferida (o temporizador > música) en la cápsula;
@@ -135,6 +137,7 @@ Los valores fijos viven en `modulos/constantes.js`. Si cambias uno, cámbialo al
 | `TIEMPO_ALERTA_ENERGIA_MS` | 3000 ms | Cargador |
 | `TIEMPO_ALERTA_PORTAPAPELES_MS` | 1600 ms | "Copiado" |
 | `TIEMPO_ALERTA_TEMPORIZADOR_MS` | 20 s | "¡Tiempo cumplido!" si no se descarta antes |
+| `TIEMPO_ALERTA_MODO_MS` | 2200 ms | "No molestar" / modo avión |
 | `TIEMPO_EXTRA_ALERTA_TRAS_HOVER_MS` | 1500 ms | Margen tras quitar el puntero de una alerta |
 | `MAXIMO_ALERTAS_EN_COLA` | 5 | Alertas en espera |
 | `MARGEN_REPETICION_PORTAPAPELES_MS` | 400 ms | Copias casi simultáneas cuentan como una |

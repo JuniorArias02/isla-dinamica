@@ -96,6 +96,8 @@ Las extensiones corren **en el mismo hilo que el compositor**. Un error o un buc
    - Colores sólidos o translúcidos, `border-radius` y sombras CSS suaves.
    - No usar `clip_to_allocation` en la cápsula: recorta la sombra y la deja cuadrada.
    - Las animaciones infinitas (onda) solo corren mientras se ven y se detienen con `remove_all_transitions()`.
+4. **Nunca cambiar tamaños desde un aviso de tamaño** (`notify::width`, `notify::height`, `notify::allocation`): pide un cálculo de tamaños en medio del actual, Mutter avisa `Can't update stage views ... needs an allocation` y las animaciones de la tarjeta pueden congelarse. Si un hijo depende del tamaño del padre, se calcula en `vfunc_allocate` (ver `BarraNivel`). La prueba aislada falla si aparece ese aviso.
+5. **Varias pantallas:** las posiciones se calculan con `Main.layoutManager.primaryMonitor` (donde está el panel), nunca con la pantalla 0 ni con `global.stage.width`.
 
 ---
 

@@ -186,6 +186,30 @@ class TarjetaFlotante extends St.Widget {
         });
     }
 
+    /**
+     * Las pantallas cambiaron (se conectó o desconectó un monitor, o cambió el
+     * principal): la cápsula está en otro sitio y la isla salta junto a ella, sin
+     * animación. Si se estaba cerrando, el cierre termina ya.
+     */
+    recolocar() {
+        if (!this.visible)
+            return;
+        if (this._cerrando) {
+            this._terminarCierre();
+            return;
+        }
+        for (const propiedad of PROPIEDADES_GEOMETRIA)
+            this.remove_transition(propiedad);
+        this.remove_transition('translation-y');
+        this.translation_y = 0;
+
+        const ancho = this._contenido?.width || this.width;
+        const alto = this._contenido ? this._contenido.get_preferred_height(ancho)[1] : this.height;
+        const ancla = this._obtenerAncla();
+        this.set_position(this._limitarX(ancla.x + ancla.ancho / 2 - ancho / 2, ancho), ancla.y);
+        this.set_size(ancho, alto);
+    }
+
     _terminarCierre() {
         this._cancelarSeguroCierre();
         if (!this._cerrando)

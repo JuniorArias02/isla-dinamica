@@ -21,6 +21,8 @@ Extensión para **GNOME Shell 50** que convierte el centro del panel superior en
 | **Cargador** | Aviso al enchufar o desenchufar, con porcentaje y tiempo restante |
 | **Temporizador** | Botones rápidos, pausa, +1 min y alarma |
 | **"Copiado"** | Aviso breve al copiar algo. Nunca se lee lo copiado |
+| **No molestar y modo avión** | Aviso al activarlos o desactivarlos |
+| **Menú rápido** | Clic derecho en la isla: No molestar, ajustes y registro de errores |
 | **Privacidad** | Puntos de color cuando se usa el micrófono (naranja), la cámara (verde) o se graba la pantalla (rojo) |
 
 Todas las transiciones usan resortes: la isla crece desde la cápsula, el contenido aparece después de la forma y al cerrar la cápsula aterriza con un pequeño rebote.
@@ -78,6 +80,7 @@ Los cambios de código se cargan al volver a iniciar sesión.
 | Clic en la cápsula | Abre la isla en la página de lo que muestra la cápsula |
 | Arrastrar la cápsula a los lados / dos dedos | Cambia la vista: hora ↔ música ↔ temporizador |
 | Clic en el círculo | Intercambia la actividad del círculo con la de la cápsula |
+| **Clic derecho** en la isla | Menú: No molestar, Ajustes de la isla, Registro de errores |
 | Deslizar a los lados con la isla abierta | Cambia de página |
 | Deslizar hacia arriba / rueda del ratón | Cierra la isla o descarta la alerta |
 | Clic en una notificación | Abre la app o el chat |
@@ -89,7 +92,7 @@ La lista completa de gestos está en [.docs/LOGICA_Y_FLUJO.md](.docs/LOGICA_Y_FL
 
 ## Ajustes
 
-**Extensiones → Isla Dinámica → ⚙️**, o:
+**Clic derecho en la isla → Ajustes de la isla**, o:
 
 ```bash
 gnome-extensions prefs isla-dinamica@juniorarias02
@@ -97,7 +100,7 @@ gnome-extensions prefs isla-dinamica@juniorarias02
 
 - **Notificaciones:** modo privado (oculta el texto de los mensajes), avisar con "No molestar", duración en pantalla.
 - **Isla:** abrir con el puntero encima, cierre automático, ocultar el reloj de Ubuntu, animar aunque las animaciones del sistema estén desactivadas.
-- **Avisos:** volumen y brillo, cargador, "Copiado", puntos de privacidad.
+- **Avisos:** volumen y brillo, cargador, "Copiado", "No molestar" y modo avión, puntos de privacidad.
 
 Los cambios se aplican al instante.
 
@@ -126,7 +129,7 @@ En vivo:
 journalctl -f -o cat /usr/bin/gnome-shell | grep -i isla-dinamica
 ```
 
-También se puede abrir desde **Ajustes → Acerca de → Registro de errores**.
+También se puede abrir con **clic derecho en la isla → Registro de errores**.
 
 ---
 
