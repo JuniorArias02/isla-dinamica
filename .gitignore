@@ -1,0 +1,13 @@
+# Esquema compilado: se genera con `glib-compile-schemas schemas/`
+schemas/gschemas.compiled
+
+# Paquetes generados con `gnome-extensions pack`
+*.shell-extension.zip
+
+# Archivos temporales y del editor
+*~
+*.swp
+*.bak
+.vscode/
+.idea/
+.DS_Store

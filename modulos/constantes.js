@@ -3,7 +3,7 @@
  *
  * Centraliza tiempos, prioridades, estados y dimensiones para que la
  * lógica (controlador) y la presentación (ui) usen exactamente los mismos
- * valores descritos en LOGICA_Y_FLUJO.md.
+ * valores descritos en .docs/LOGICA_Y_FLUJO.md.
  */
 
 /** Prefijo de los mensajes de consola (sin tildes para que el grep del README funcione). */
@@ -206,8 +206,8 @@ export const VELOCIDAD_LANZAR = 0.5;
 /**
  * true  → curva de resorte física propia (Clutter.Timeline.set_progress_func).
  * false → curvas integradas de GNOME (EASE_OUT_BACK, etc.), equivalentes y probadas.
- * El resorte físico está desactivado hasta verificarlo en un GNOME real: en la
- * primera prueba en la sesión del autor la isla quedó congelada a mitad de animación.
+ * El resorte físico está desactivado hasta validarlo en un GNOME real: en sesiones
+ * reales llegó a dejar la isla detenida a mitad de animación.
  */
 export const USAR_RESORTE_FISICO = false;
 
