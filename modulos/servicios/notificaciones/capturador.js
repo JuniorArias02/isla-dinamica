@@ -13,8 +13,12 @@
  * La notificación se marca como vista igual que hace GNOME y sigue
  * guardada en el historial del calendario.
  *
- * Excepción: las notificaciones CRÍTICAS (ej. batería agotándose) siguen
- * usando el banner nativo porque requieren más espacio y atención.
+ * Todas pasan por la isla, también las CRÍTICAS (ej. batería agotándose, o una
+ * llamada si la web la marca así): la isla las deja más tiempo en pantalla.
+ * Si la isla falla, la notificación va al banner nativo de GNOME.
+ *
+ * Las llamadas que suenan (WhatsApp, Meet, Telegram...) se marcan con `llamada`:
+ * si traen botones de contestar o rechazar, la isla los puede pulsar.
  *
  * Al desactivar la extensión se restaura el método original.
  *
@@ -34,9 +38,11 @@ import Shell from 'gi://Shell';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
+import {ICONO_FUENTE_CAPTURAS} from '../../constantes.js';
 import {ajuste, AJUSTES} from '../../ajustes.js';
 import {registrarAviso, registrarDepuracion, registrarError, protegido} from '../../registro.js';
 import {reconocerApp, separarOrigen} from './reconocedorApps.js';
+import {reconocerLlamadaEntrante} from '../llamadas/reconocedorLlamadas.js';
 
 /**
  * Copia propia de las fotos de las notificaciones: los navegadores las guardan en
@@ -44,6 +50,19 @@ import {reconocerApp, separarOrigen} from './reconocedorApps.js';
  * después (página "Notificaciones"). Es solo caché: se vacía al iniciar.
  */
 const CARPETA_FOTOS = GLib.build_filenamev([GLib.get_user_cache_dir(), 'isla-dinamica', 'fotos']);
+
+/**
+ * ¿Es la fuente de avisos de la herramienta de captura de GNOME?
+ * Se mira el icono de la fuente (no depende del idioma). No se usa el getter
+ * `fuente.iconName`: en GNOME 50 consulta `this.gicon`, que en las fuentes no
+ * existe (la propiedad es `icon`), y siempre devuelve null.
+ * @param {object|null} fuente - MessageTray.Source
+ * @returns {boolean}
+ */
+function esFuenteDeCapturas(fuente) {
+    const icono = fuente?.icon;
+    return icono instanceof Gio.ThemedIcon && icono.get_names().includes(ICONO_FUENTE_CAPTURAS);
+}
 
 export class CapturadorNotificaciones {
     /**
@@ -77,7 +96,7 @@ export class CapturadorNotificaciones {
         this._metodoPropio = function () {
             // `this` es Main.messageTray.
             const siguiente = this._notificationQueue[0];
-            if (!siguiente || siguiente.urgency === MessageTray.Urgency.CRITICAL)
+            if (!siguiente)
                 return capturador._metodoOriginal.call(this);
 
             try {
@@ -235,6 +254,23 @@ export class CapturadorNotificaciones {
         const titulo = notificacion.title || nombreFuente || 'Notificación';
 
         const viva = () => this._senalesDestruccion.has(notificacion);
+
+        // ¿Es una llamada sonando? Sus botones (si los trae) se pulsan desde la isla.
+        const acciones = [...(notificacion.actions ?? [])];
+        const reconocida = reconocerLlamadaEntrante({titulo, texto, botones: acciones.map(accion => accion.label ?? '')});
+        const pulsar = indice => {
+            const accion = acciones[indice];
+            return accion ? () => {
+                if (viva())
+                    accion.activate();
+            } : null;
+        };
+        const llamada = reconocida ? {
+            esVideo: reconocida.esVideo,
+            contestar: pulsar(reconocida.contestar),
+            rechazar: pulsar(reconocida.rechazar),
+        } : null;
+
         const datos = {
             id,
             titulo,
@@ -252,6 +288,14 @@ export class CapturadorNotificaciones {
             iconoApp: this._iconoDeApp(app) ?? fuente?.app?.get_icon?.() ?? fuente?.icon ?? null,
             marcaTiempoMs: Math.floor(GLib.get_real_time() / 1000),
             silenciosa,
+            // Crítica (batería agotándose...): la isla la deja más tiempo.
+            critica: notificacion.urgency === MessageTray.Urgency.CRITICAL,
+            // Llamada sonando: {esVideo, contestar, rechazar} (las dos últimas, null si no hay botón).
+            llamada,
+            // Aviso de la herramienta de captura de GNOME (captura hecha o grabación terminada).
+            deCapturas: esFuenteDeCapturas(fuente),
+            // La captura trae su imagen (St.ImageContent): se usa como miniatura.
+            miniatura: esFuenteDeCapturas(fuente) ? notificacion.gicon ?? null : null,
             // Al hacer clic se abre la app emisora (como al pulsar el banner nativo).
             activar: () => {
                 if (viva())
@@ -270,7 +314,8 @@ export class CapturadorNotificaciones {
         // Solo con depuración activa: una línea por notificación llenaría el journal.
         registrarDepuracion(`Notificación: fuente="${nombreFuente}" appId=${idAppFuente ?? '-'} ` +
             `reconocida=${app?.id ?? 'no'} origen=${origen ?? '-'} ` +
-            `imagen=${notificacion.gicon?.constructor?.name ?? 'ninguna'} acciones=${notificacion.actions?.length ?? 0}` +
+            `imagen=${notificacion.gicon?.constructor?.name ?? 'ninguna'} acciones=${acciones.length} ` +
+            `urgencia=${notificacion.urgency} llamada=${llamada ? (llamada.contestar ? 'con botones' : 'sin botones') : 'no'}` +
             `${silenciosa ? ' (No molestar)' : ''}`);
 
         try {

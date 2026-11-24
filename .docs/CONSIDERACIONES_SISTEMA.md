@@ -41,6 +41,11 @@ Estas piezas no son API pública y pueden cambiar en cualquier versión. Son lo 
 | `Main.osdWindowManager.show` / `showAll` | Volumen y brillo |
 | `Main.panel.statusArea.dateMenu._clockDisplay` | Ocultar el texto del reloj |
 | `Main.panel.statusArea.quickSettings._volumeInput._indicator` | Saber si el micrófono está en uso |
+| `Main.panel.statusArea.dateMenu._eventSource` | Eventos del calendario (fuente compartida con el panel) |
+| `Main.panel.statusArea.screenRecording.container` | Ocultar el indicador de grabación de GNOME mientras la isla muestra la suya |
+| `status/volume.js · getMixerControl()` y `get_source_outputs()` | Saber qué app usa el micrófono (llamada en curso) y silenciarlo. Es la función que exporta el módulo de volumen de GNOME |
+| `MessageTray.Notification.actions` | Pulsar "Contestar" / "Rechazar" de una llamada desde la isla |
+| `Main.panel.menuManager.removeMenu(boton.menu)` | Quitar el menú vacío que GNOME registra para la cápsula; si no, al arrastrarla sobre el reloj se abre su menú y el arrastre se corta |
 
 ### Al salir una versión nueva de GNOME
 
@@ -101,6 +106,9 @@ Limitaciones del entorno aislado:
 * BlueZ y UPower sí están disponibles, porque usan el bus de sistema.
 * No hay cámara: el punto de la cámara se prueba simulando el estado.
 * El portapapeles de Wayland solo acepta copias de la app con el foco del teclado; hace falta un teclado virtual y que la app reintente la copia.
+* No existe el servicio de grabación de GNOME: al simular una grabación con `Main.screenshotUI._setScreencastInProgress(true)`, GNOME la da por fallida al instante. Hay que poner antes `Main.screenshotUI._screencastStarting = true` (y quitarlo para detenerla).
+* GNOME destruye una fuente de notificaciones cuando se queda vacía: para simular varios avisos seguidos, crear una fuente nueva cada vez.
+* No hay servidor de sonido: el mezclador nunca está listo y no se detectan llamadas en curso. Se prueban simulando el estado (`isla._controlador.actualizarLlamada({...})`); la llamada que suena sí se prueba de verdad, con una notificación con botones (`notification.addAction(...)`).
 
 ---
 
@@ -154,6 +162,22 @@ busctl introspect org.bluez /org/bluez/hci0/dev_XX_XX_XX_XX_XX_XX
 * Los mensajes del canal AAP aparecen en el registro con el prefijo `AAP:` o `AirPods:`.
 
 ---
+
+## Llamadas
+
+Para ver qué manda una app al sonar una llamada (botones, urgencia), sin la isla de por medio:
+
+```bash
+dbus-monitor --session "type='method_call',interface='org.freedesktop.Notifications',member='Notify'"
+```
+
+Cada aviso trae el nombre de la app, el título, el texto, la lista de botones (`id`, `texto`, `id`, `texto`...) y las pistas (`urgency` 2 = crítica). Ojo: muestra el texto de los mensajes que lleguen mientras se mira.
+
+Quién usa el micrófono:
+
+```bash
+pactl list source-outputs | grep -E "application.name|application.id|media.name"
+```
 
 ## Multimedia (MPRIS2)
 

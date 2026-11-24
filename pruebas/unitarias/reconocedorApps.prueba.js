@@ -28,6 +28,12 @@ ejecutar('Reconocedor de apps', async () => {
         igual(nombre({nombreApp: 'Brave', idApp: 'brave-ibblmnobmgdmpoeblocemifbpglakpoi-Default.desktop'}), 'Telegram');
     });
 
+    await prueba('Google Meet en Chrome (por la web de origen), y no se confunde con Gmail', () => {
+        const {origen} = separarOrigen('meet.google.com\nLuis te está llamando');
+        igual(nombre({nombreApp: 'Google Chrome', origen}), 'Google Meet');
+        igual(nombre({nombreApp: 'Google Chrome', origen: 'mail.google.com'}), 'Gmail');
+    });
+
     await prueba('una app del sistema no se reconoce como chat', () => {
         igual(nombre({nombreApp: 'Configuración'}), null);
     });

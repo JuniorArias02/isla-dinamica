@@ -16,7 +16,7 @@
       <description>La isla muestra quién escribió, pero no el texto del mensaje.</description>
     </key>
     <key name="notificar-en-no-molestar" type="b">
-      <default>true</default>
+      <default>false</default>
       <summary>Avisar con "No molestar"</summary>
       <description>Con "No molestar" activado, la isla sigue mostrando las notificaciones en silencio.</description>
     </key>
@@ -43,6 +43,15 @@
       <summary>Ocultar el reloj de Ubuntu</summary>
       <description>La isla muestra la hora; el texto del reloj del panel se oculta.</description>
     </key>
+    <key name="arrastre-capsula" type="s">
+      <choices>
+        <choice value="asomar"/>
+        <choice value="cambiar"/>
+      </choices>
+      <default>'asomar'</default>
+      <summary>Al arrastrar la cápsula</summary>
+      <description>"asomar": la vista de al lado aparece siguiendo al puntero y se queda al soltar pasada la mitad. "cambiar": la vista cambia al instante al soltar, con la transición por el círculo.</description>
+    </key>
     <key name="forzar-animaciones" type="b">
       <default>true</default>
       <summary>Animaciones siempre</summary>
@@ -67,10 +76,33 @@
       <summary>Avisar de "No molestar" y modo avión</summary>
       <description>Aviso breve al activar o desactivar "No molestar" o el modo avión.</description>
     </key>
+    <key name="avisar-capturas" type="b">
+      <default>true</default>
+      <summary>Capturas y grabaciones de pantalla</summary>
+      <description>Grabación en vivo en la cápsula y avisos de captura (con miniatura) y de grabación terminada.</description>
+    </key>
+    <key name="avisar-llamadas" type="b">
+      <default>true</default>
+      <summary>Llamadas y videollamadas</summary>
+      <description>La llamada que suena (con botones para contestar o rechazar si la app los ofrece) y la llamada en curso con su contador.</description>
+    </key>
+    <key name="ocultar-indicador-grabacion" type="b">
+      <default>true</default>
+      <summary>Ocultar el indicador de grabación de GNOME</summary>
+      <description>Mientras se graba, la isla ya muestra el contador y el botón para detener.</description>
+    </key>
     <key name="mostrar-privacidad" type="b">
       <default>true</default>
       <summary>Puntitos de privacidad</summary>
       <description>Micrófono, cámara y pantalla en uso.</description>
+    </key>
+
+    <!-- ───── Estado (no aparece en la ventana de ajustes) ───── -->
+    <key name="ultima-duracion-temporizador-s" type="i">
+      <range min="1" max="86399"/>
+      <default>300</default>
+      <summary>Última duración del temporizador (segundos)</summary>
+      <description>Las ruedas del temporizador empiezan en este valor.</description>
     </key>
   </schema>
 </schemalist>

@@ -5,8 +5,10 @@
  * PaginaTemporizador — página del carrusel para el temporizador de la isla.
  *
  *   Sin temporizador:          Temporizador
- *                              [1 min] [3 min] [5 min] [10 min]
- *                              [15 min] [25 min] [30 min] [1 h]
+ *                                 00     04     59
+ *                              [ 00 h  05 min 00 s ]   (▶)    ← ruedas (estilo iPhone) + Iniciar
+ *                                 01     06     01
+ *                              [1 min] [5 min] [15 min] [30 min]   ← atajos: arrancan al instante
  *
  *   En marcha / en pausa:      Temporizador
  *                              (  4:32  )   [+1 min]  [⏸]  [✕]
@@ -21,14 +23,16 @@ import St from 'gi://St';
 
 import {ESTADOS_TEMPORIZADOR, PRESETS_TEMPORIZADOR_MIN} from '../../constantes.js';
 import {protegido} from '../../registro.js';
-import {ICONOS} from '../iconos.js';
+import {ajuste, AJUSTES} from '../../ajustes.js';
+import {icono, ICONOS} from '../iconos.js';
 import {agregarEfectoPulsacion, aparecerConRebote} from '../animaciones.js';
 import {formatearCuentaAtras} from '../formato.js';
 import {AnilloProgreso} from '../componentes/anilloProgreso.js';
 import {BotonControl} from '../componentes/botonControl.js';
+import {SelectorDuracion} from '../componentes/selectorDuracion.js';
 
 const UN_MINUTO_MS = 60 * 1000;
-const PRESETS_POR_FILA = 4;
+const UN_SEGUNDO_MS = 1000;
 
 /** "5 min", "1 h" */
 function textoPreset(minutos) {
@@ -50,38 +54,70 @@ class PaginaTemporizador extends St.BoxLayout {
 
         this.add_child(new St.Label({text: 'Temporizador', style_class: 'isla-pagina-encabezado'}));
 
-        this._presets = this._construirPresets();
+        this._elegir = this._construirElegir();
         this._activo = this._construirActivo();
-        this.add_child(this._presets);
+        this.add_child(this._elegir);
         this.add_child(this._activo);
 
         this.actualizar(null);
     }
 
-    _construirPresets() {
+    /** Ruedas para elegir cualquier duración, botón Iniciar y atajos. */
+    _construirElegir() {
         const caja = new St.BoxLayout({
-            style_class: 'isla-temporizador-presets',
+            style_class: 'isla-temporizador-elegir',
             orientation: Clutter.Orientation.VERTICAL,
         });
-        for (let i = 0; i < PRESETS_TEMPORIZADOR_MIN.length; i += PRESETS_POR_FILA) {
-            const fila = new St.BoxLayout({style_class: 'isla-temporizador-fila-presets'});
-            // Todos los botones del mismo ancho, aunque el texto sea más corto ("1 h").
-            fila.layout_manager.homogeneous = true;
-            for (const minutos of PRESETS_TEMPORIZADOR_MIN.slice(i, i + PRESETS_POR_FILA)) {
-                const boton = new St.Button({
-                    label: textoPreset(minutos),
-                    style_class: 'isla-temporizador-preset',
-                    x_expand: true,
-                    can_focus: true,
-                });
-                boton.connect('clicked', protegido(`temporizador: iniciar ${minutos} min`,
-                    () => this._acciones.iniciar(minutos * UN_MINUTO_MS)));
-                agregarEfectoPulsacion(boton);
-                fila.add_child(boton);
-            }
-            caja.add_child(fila);
+
+        const fila = new St.BoxLayout({style_class: 'isla-temporizador-fila-selector', x_align: Clutter.ActorAlign.CENTER});
+        this._selector = new SelectorDuracion({
+            segundos: ajuste(AJUSTES.ULTIMA_DURACION_TEMPORIZADOR_S),
+            alCambiar: segundos => this._actualizarBotonIniciar(segundos),
+        });
+        this._botonIniciar = new St.Button({
+            style_class: 'isla-temporizador-iniciar',
+            child: new St.Icon({gicon: icono(ICONOS.REPRODUCIR), style_class: 'isla-temporizador-iniciar-icono'}),
+            y_align: Clutter.ActorAlign.CENTER,
+            can_focus: true,
+        });
+        this._botonIniciar.connect('clicked', protegido('temporizador: iniciar con las ruedas', () => {
+            const segundos = this._selector.segundos;
+            if (segundos > 0)
+                this._acciones.iniciar(segundos * UN_SEGUNDO_MS);
+        }));
+        agregarEfectoPulsacion(this._botonIniciar);
+        fila.add_child(this._selector);
+        fila.add_child(this._botonIniciar);
+        caja.add_child(fila);
+
+        // Atajos: arrancan al instante (como los "recientes" del móvil).
+        const atajos = new St.BoxLayout({style_class: 'isla-temporizador-fila-presets'});
+        atajos.layout_manager.homogeneous = true;
+        for (const minutos of PRESETS_TEMPORIZADOR_MIN) {
+            const boton = new St.Button({
+                label: textoPreset(minutos),
+                style_class: 'isla-temporizador-preset',
+                x_expand: true,
+                can_focus: true,
+            });
+            boton.connect('clicked', protegido(`temporizador: iniciar ${minutos} min`,
+                () => this._acciones.iniciar(minutos * UN_MINUTO_MS)));
+            agregarEfectoPulsacion(boton);
+            atajos.add_child(boton);
         }
+        caja.add_child(atajos);
+
+        this._actualizarBotonIniciar(this._selector.segundos);
         return caja;
+    }
+
+    /** Con todo en cero no hay nada que iniciar. */
+    _actualizarBotonIniciar(segundos) {
+        this._botonIniciar.reactive = segundos > 0;
+        if (segundos > 0)
+            this._botonIniciar.remove_style_class_name('deshabilitado');
+        else
+            this._botonIniciar.add_style_class_name('deshabilitado');
     }
 
     _construirActivo() {
@@ -152,10 +188,14 @@ class PaginaTemporizador extends St.BoxLayout {
         this._estado = estado;
 
         const inactivo = estado === ESTADOS_TEMPORIZADOR.INACTIVO;
-        this._presets.visible = inactivo;
+        this._elegir.visible = inactivo;
         this._activo.visible = !inactivo;
-        if (inactivo)
+        if (inactivo) {
+            // Al volver a elegir, las ruedas muestran la última duración usada.
+            if (cambio)
+                this._selector.establecerSegundos(ajuste(AJUSTES.ULTIMA_DURACION_TEMPORIZADOR_S), false);
             return;
+        }
 
         const terminado = estado === ESTADOS_TEMPORIZADOR.TERMINADO;
         const corriendo = estado === ESTADOS_TEMPORIZADOR.CORRIENDO;

@@ -6,7 +6,9 @@
  * intenciones para la isla. No dibuja nada.
  *
  *   Clic en la cápsula o en una alerta       → pulsar (abrir/cerrar/activar)
- *   Arrastrar la cápsula (ratón presionado) o deslizar con dos dedos a los lados
+ *   Arrastrar la cápsula (ratón presionado) → asomarse a la vista de al lado
+ *     (sigue al puntero; al soltar, IslaUI decide si se queda)
+ *   Deslizar con dos dedos a los lados sobre la cápsula
  *     → cambiar de vista: hora ↔ música ↔ temporizador
  *   Puntero fuera de la isla abierta 3 s     → cerrar
  *   Puntero encima de una alerta             → la alerta no se va
@@ -23,7 +25,6 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {
     ESTADOS,
-    UMBRAL_ARRASTRE_VISTA_PX,
     RETARDO_APERTURA_HOVER_MS,
     BLOQUEO_DESLIZAR_MS,
     UMBRAL_DESLIZAR_TOUCHPAD,
@@ -42,7 +43,8 @@ export class GestorInteraccion {
      * @param {object} opciones.intenciones - Callbacks:
      *   abrir(), cerrar(), pulsar(), mantenerAlerta(bool),
      *   cambiarVista(direccion) (+1 siguiente, -1 anterior),
-     *   seguirArrastreCapsula(dx) / soltarArrastreCapsula() (la cápsula sigue al ratón),
+     *   seguirArrastreCapsula(dx) (la cápsula sigue al ratón),
+     *   soltarArrastreCapsula({desplazamiento, velocidad} | null) (null = gesto cancelado),
      *   descartarDeslizando() (cerrar la isla o quitar la alerta con un gesto),
      *   abrirMenu() (clic derecho en la cápsula)
      */
@@ -57,6 +59,8 @@ export class GestorInteraccion {
         this._idBloqueoDeslizar = 0;
         this._acumuladoScroll = 0;
         this._acumuladoCierre = 0;
+        /** Agarre del puntero mientras se arrastra la cápsula (Clutter.Grab). */
+        this._agarre = null;
 
         // Tras cerrar con el puntero encima, no se reabre hasta que el puntero salga.
         this._requiereSalir = false;
@@ -88,6 +92,7 @@ export class GestorInteraccion {
         this._cancelar('_idApertura');
         this._cancelar('_idCierre');
         this._cancelar('_idBloqueoDeslizar');
+        this._soltarAgarre();
 
         this._boton.disconnectObject(this);
         this._tarjeta.disconnectObject(this);
@@ -134,6 +139,9 @@ export class GestorInteraccion {
         // en la vista expandida los botones internos reciben sus propios clics.
         this._gestoTarjeta = new Clutter.ClickGesture({required_button: Clutter.BUTTON_PRIMARY});
         this._gestoTarjeta.connect('recognize', pulsar);
+        // Los botones propios de una alerta (contestar / rechazar una llamada) no cuentan como toque.
+        this._gestoTarjeta.connect('may-recognize', protegido('interacción: ¿clic en un botón de la alerta?',
+            () => !this._empiezaEnClase(this._gestoTarjeta, 'isla-captura-clic'), true));
         this._gestoTarjeta.enabled = false;
         this._tarjeta.add_action(this._gestoTarjeta);
 
@@ -142,17 +150,29 @@ export class GestorInteraccion {
         this._gestoArrastre.connect('pan-update', protegido('interacción: arrastrando la isla',
             () => this._tarjeta.seguirArrastre(this._gestoArrastre.get_accumulated_delta().get_y())));
         this._gestoArrastre.connect('end', protegido('interacción: soltar la isla', () => this._alSoltarArrastre()));
+        // Sobre una rueda (temporizador) el arrastre vertical mueve la rueda, no cierra la isla.
+        this._gestoArrastre.connect('may-recognize', protegido('interacción: ¿arrastre sobre una rueda?',
+            () => !this._empiezaEnClase(this._gestoArrastre, 'isla-captura-vertical'), true));
         this._gestoArrastre.connect('cancel', protegido('interacción: arrastre cancelado', () => this._tarjeta.soltarArrastre()));
         this._gestoArrastre.enabled = false;
         this._tarjeta.add_action(this._gestoArrastre);
 
         // Arrastrar la cápsula a los lados (ratón presionado) para cambiar de vista.
         this._gestoArrastreCapsula = new Clutter.PanGesture({pan_axis: Clutter.PanAxis.X});
+        // Sin agarre, el gesto se cancela en cuanto el puntero sale del botón del panel
+        // (y para asomarse del todo hay que arrastrar más allá de la cápsula).
+        this._gestoArrastreCapsula.connect('recognize', protegido('interacción: agarrar la cápsula',
+            () => this._agarrar()));
         this._gestoArrastreCapsula.connect('pan-update', protegido('interacción: arrastrando la cápsula',
             () => this._intenciones?.seguirArrastreCapsula(this._gestoArrastreCapsula.get_accumulated_delta().get_x())));
-        this._gestoArrastreCapsula.connect('end', protegido('interacción: soltar la cápsula', () => this._alSoltarCapsula()));
-        this._gestoArrastreCapsula.connect('cancel', protegido('interacción: arrastre de cápsula cancelado',
-            () => this._intenciones?.soltarArrastreCapsula()));
+        this._gestoArrastreCapsula.connect('end', protegido('interacción: soltar la cápsula', () => {
+            this._soltarAgarre();
+            this._alSoltarCapsula();
+        }));
+        this._gestoArrastreCapsula.connect('cancel', protegido('interacción: arrastre de cápsula cancelado', () => {
+            this._soltarAgarre();
+            this._intenciones?.soltarArrastreCapsula(null);
+        }));
         this._boton.add_action(this._gestoArrastreCapsula);
 
         this._boton.connectObject(
@@ -179,6 +199,33 @@ export class GestorInteraccion {
         this._intenciones?.pulsar();
     }
 
+    /**
+     * ¿Empezó el gesto sobre un actor que se queda ese gesto para sí?
+     *   `isla-captura-vertical` → usa el arrastre vertical (ej. RuedaSelector).
+     *   `isla-captura-clic`     → botón propio dentro de una alerta (ej. contestar una llamada).
+     * @param {Clutter.Gesture} gesto
+     * @param {string} clase - Clase CSS que marca esos actores.
+     * @returns {boolean}
+     */
+    _empiezaEnClase(gesto, clase) {
+        // El arrastre sabe dónde empezó; el clic se mira en su evento (coordenadas de pantalla).
+        let x, y;
+        if (gesto instanceof Clutter.PanGesture) {
+            ({x, y} = gesto.get_begin_centroid_abs());
+        } else {
+            const evento = gesto.get_n_points() > 0 ? gesto.get_point_event(0) : null;
+            if (!evento)
+                return false;
+            [x, y] = evento.get_coords();
+        }
+        let actor = global.stage.get_actor_at_pos(Clutter.PickMode.REACTIVE, x, y);
+        for (; actor; actor = actor.get_parent()) {
+            if (actor.has_style_class_name?.(clase))
+                return true;
+        }
+        return false;
+    }
+
     _alPedirMenu() {
         this._cancelar('_idApertura');
         this._requiereSalir = true;
@@ -190,19 +237,23 @@ export class GestorInteraccion {
         return this._estado === ESTADOS.REPOSO || this._estado === ESTADOS.MULTIMEDIA;
     }
 
-    /**
-     * Soltar la cápsula tras arrastrarla: de derecha a izquierda → siguiente vista;
-     * de izquierda a derecha → anterior. Un arrastre corto la devuelve a su sitio.
-     */
+    /** Mientras se arrastra, todos los movimientos del puntero van a la cápsula. */
+    _agarrar() {
+        this._soltarAgarre();
+        this._agarre = global.stage.grab(this._boton);
+    }
+
+    _soltarAgarre() {
+        this._agarre?.dismiss();
+        this._agarre = null;
+    }
+
+    /** Soltar la cápsula tras arrastrarla: IslaUI decide si se queda la vista de al lado. */
     _alSoltarCapsula() {
-        const desplazamiento = this._gestoArrastreCapsula.get_accumulated_delta().get_x();
-        const velocidad = this._gestoArrastreCapsula.get_velocity().get_x();
-        const suficiente = Math.abs(desplazamiento) > UMBRAL_ARRASTRE_VISTA_PX ||
-            Math.abs(velocidad) > VELOCIDAD_LANZAR;
-        if (suficiente && this._capsulaVisible())
-            this._intenciones?.cambiarVista(desplazamiento < 0 ? 1 : -1);
-        else
-            this._intenciones?.soltarArrastreCapsula();
+        this._intenciones?.soltarArrastreCapsula({
+            desplazamiento: this._gestoArrastreCapsula.get_accumulated_delta().get_x(),
+            velocidad: this._gestoArrastreCapsula.get_velocity().get_x(),
+        });
     }
 
     /** @returns {boolean} true si la isla grande está a la vista (alerta o expandida). */

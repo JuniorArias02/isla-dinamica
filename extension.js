@@ -22,6 +22,7 @@
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Shell from 'gi://Shell';
 
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
@@ -36,6 +37,9 @@ import {
     TIEMPO_ALERTA_PORTAPAPELES_MS,
     TIEMPO_ALERTA_TEMPORIZADOR_MS,
     TIEMPO_ALERTA_MODO_MS,
+    TIEMPO_ALERTA_CAPTURA_MS,
+    TIEMPO_ALERTA_GRABACION_MS,
+    TIEMPO_ALERTA_CRITICA_MS,
     ESTADOS_TEMPORIZADOR,
 } from './modulos/constantes.js';
 import {
@@ -60,6 +64,10 @@ import {Temporizador} from './modulos/servicios/temporizador.js';
 import {MonitorPortapapeles} from './modulos/servicios/portapapeles.js';
 import {MonitorPrivacidad} from './modulos/servicios/privacidad.js';
 import {MonitorModos} from './modulos/servicios/modos.js';
+import {MonitorCalendario} from './modulos/servicios/calendario.js';
+import {MonitorGrabacion} from './modulos/servicios/grabacion.js';
+import {MonitorLlamada} from './modulos/servicios/llamadas/monitorLlamada.js';
+import {activarVentanaDeProceso} from './modulos/servicios/ventanas.js';
 import {IslaUI} from './modulos/ui/isla.js';
 import {configurarIconos, liberarIconos} from './modulos/ui/iconos.js';
 import {
@@ -68,6 +76,7 @@ import {
     alCambiarCualquierAjuste,
     dejarDeEscucharAjustes,
     ajuste,
+    guardarAjuste,
     AJUSTES,
 } from './modulos/ajustes.js';
 
@@ -92,6 +101,15 @@ export default class ExtensionIslaDinamica extends Extension {
      */
     disable() {
         registrarInfo('Desactivando extensión y liberando memoria...', true);
+
+        intentar('desactivar llamadas', () => this._llamada?.destruir());
+        this._llamada = null;
+
+        intentar('desactivar grabación', () => this._grabacion?.destruir());
+        this._grabacion = null;
+
+        intentar('desactivar calendario', () => this._calendario?.destruir());
+        this._calendario = null;
 
         intentar('desactivar modos', () => this._modos?.destruir());
         this._modos = null;
@@ -161,17 +179,52 @@ export default class ExtensionIslaDinamica extends Extension {
                 this._controlador?.establecerExpandido(false);
                 this._isla?.abrirCalendarioGnome();
             }),
+            capturas: {
+                abrirCaptura: protegido('capturas: abrir la herramienta', () => this._grabacion?.abrirCaptura()),
+                abrirGrabacion: protegido('capturas: grabar la pantalla', () => this._grabacion?.abrirGrabacion()),
+                detenerGrabacion: protegido('capturas: detener la grabación', () => {
+                    this._grabacion?.detener();
+                    this._controlador?.establecerExpandido(false);
+                }),
+            },
+            llamada: {
+                mostrar: protegido('llamada: ir a la llamada', () => {
+                    this._controlador?.establecerExpandido(false);
+                    this._llamada?.mostrar();
+                }),
+                alternarSilencio: protegido('llamada: silenciar micrófono', () => this._llamada?.alternarSilencio()),
+            },
+            calendario: {
+                abrir: protegido('calendario: abrir la app', () => this._abrirAppCalendario()),
+                actualizar: protegido('calendario: pedir el mes actual', () => this._calendario?.pedirMesActual()),
+            },
             multimedia: {
                 alternar: protegido('multimedia: reproducir/pausa', () => this._multimedia?.activo?.alternarReproduccion()),
                 siguiente: protegido('multimedia: siguiente', () => this._multimedia?.activo?.siguiente()),
                 anterior: protegido('multimedia: anterior', () => this._multimedia?.activo?.anterior()),
                 mostrarReproductor: protegido('multimedia: mostrar reproductor', () => {
-                    this._multimedia?.activo?.mostrarVentana();
                     this._controlador?.establecerExpandido(false);
+                    this._mostrarReproductor(this._multimedia?.activo)
+                        .catch(error => registrarError('multimedia: mostrar reproductor', error));
                 }),
                 obtenerPosicion: () => this._multimedia?.activo?.obtenerPosicion() ?? Promise.resolve(null),
                 irAPosicion: protegido('multimedia: ir a posición', posicionUs => this._multimedia?.activo?.irAPosicion(posicionUs)),
             },
+            // Audio de un chat (nota de voz): mismas acciones, sobre su propio reproductor. Sin anterior ni siguiente.
+            audio: {
+                alternar: protegido('audio: reproducir/pausa', () => this._multimedia?.activoAudio?.alternarReproduccion()),
+                siguiente: () => {},
+                anterior: () => {},
+                mostrarReproductor: protegido('audio: ir al chat', () => {
+                    this._controlador?.establecerExpandido(false);
+                    this._mostrarReproductor(this._multimedia?.activoAudio)
+                        .catch(error => registrarError('audio: ir al chat', error));
+                }),
+                obtenerPosicion: () => this._multimedia?.activoAudio?.obtenerPosicion() ?? Promise.resolve(null),
+                irAPosicion: protegido('audio: ir a posición', posicionUs => this._multimedia?.activoAudio?.irAPosicion(posicionUs)),
+            },
+            mostrarLlamadaEntrante: protegido('llamada: volver a mostrar la que suena',
+                () => this._controlador?.mostrarLlamadaEntrante()),
             establecerModoRuido: protegido('airpods: cambiar modo de ruido',
                 (ruta, modo) => this._airpods?.establecerModoRuido(ruta, modo)),
             // Menú del clic derecho en la cápsula.
@@ -198,8 +251,14 @@ export default class ExtensionIslaDinamica extends Extension {
                 actividad => this._controlador?.establecerActividadPreferida(actividad)),
             cambiarVistaCompacta: protegido('acción: cambiar vista de la cápsula',
                 direccion => this._controlador?.cambiarVistaCompacta(direccion) ?? false, false),
+            vistaVecina: protegido('acción: vista de al lado de la cápsula',
+                direccion => this._controlador?.vistaVecina(direccion) ?? null, null),
             temporizador: {
-                iniciar: protegido('temporizador: iniciar', ms => this._temporizador?.iniciar(ms)),
+                iniciar: protegido('temporizador: iniciar', ms => {
+                    this._temporizador?.iniciar(ms);
+                    // Las ruedas recordarán esta duración la próxima vez.
+                    guardarAjuste(AJUSTES.ULTIMA_DURACION_TEMPORIZADOR_S, Math.round(ms / 1000));
+                }),
                 sumar: protegido('temporizador: sumar', ms => this._temporizador?.sumar(ms)),
                 pausar: protegido('temporizador: pausar', () => this._temporizador?.pausar()),
                 reanudar: protegido('temporizador: reanudar', () => this._temporizador?.reanudar()),
@@ -212,15 +271,20 @@ export default class ExtensionIslaDinamica extends Extension {
 
         // Capa 3: servicios.
         this._multimedia = new MonitorMultimedia(
-            protegido('multimedia → controlador', pista => this._controlador?.actualizarPista(pista)));
+            protegido('multimedia → controlador', pista => this._controlador?.actualizarPista(pista)),
+            protegido('audio → controlador', audio => this._controlador?.actualizarAudio(audio)));
         this._bluetooth = new MonitorBluetooth(
             protegido('bluetooth → controlador', (tipo, dispositivo) => this._alEventoBluetooth(tipo, dispositivo)));
         /** @type {Map<string, {cantidad: number, ultimoMs: number}>} chat → mensajes recientes */
         this._conversaciones = new Map();
         this._notificaciones = new CapturadorNotificaciones({
             alRecibir: protegido('notificación → controlador', (_id, datos) => this._alRecibirNotificacion(datos)),
-            // Cerrada desde GNOME o por la app: sale de la lista de recientes.
-            alCerrar: protegido('notificación cerrada', id => this._controlador?.quitarNotificacion(id)),
+            // Cerrada desde GNOME o por la app: sale de la lista de recientes. Si era una
+            // llamada sonando, dejó de sonar (se contestó, se rechazó o colgó quien llamaba).
+            alCerrar: protegido('notificación cerrada', id => {
+                this._controlador?.quitarNotificacion(id);
+                this._controlador?.quitarLlamadaEntrante(`llamada-${id}`);
+            }),
         });
         this._reloj = new MonitorReloj(
             protegido('reloj → controlador', reloj => this._controlador?.actualizarReloj(reloj)));
@@ -236,6 +300,12 @@ export default class ExtensionIslaDinamica extends Extension {
             protegido('portapapeles → controlador', datos => this._alCopiar(datos)));
         this._privacidad = new MonitorPrivacidad(
             protegido('privacidad → controlador', estado => this._controlador?.actualizarPrivacidad(estado)));
+        this._grabacion = new MonitorGrabacion(
+            protegido('grabación → controlador', estado => this._alCambiarGrabacion(estado)));
+        this._llamada = new MonitorLlamada(
+            protegido('llamada → controlador', estado => this._alCambiarLlamada(estado)));
+        this._calendario = new MonitorCalendario(
+            protegido('calendario → controlador', datos => this._controlador?.actualizarCalendario(datos)));
         this._modos = new MonitorModos(
             protegido('modos → controlador', (modo, activo, estado) => this._alCambiarModo(modo, activo, estado)));
 
@@ -247,6 +317,9 @@ export default class ExtensionIslaDinamica extends Extension {
         this._osd.iniciar();
         this._portapapeles.iniciar();
         this._privacidad.iniciar();
+        this._calendario.iniciar();
+        this._grabacion.iniciar();
+        intentar('iniciar llamadas', () => this._llamada.iniciar());
         this._modos.iniciar()
             .then(() => this._controlador?.actualizarModos(this._modos.estado))
             .catch(error => registrarError('iniciar modos (No molestar, modo avión)', error));
@@ -326,6 +399,18 @@ export default class ExtensionIslaDinamica extends Extension {
      * @param {object} datos - Datos del capturador.
      */
     _alRecibirNotificacion(datos) {
+        // Avisos de la herramienta de captura de GNOME: tienen sus propias alertas.
+        if (datos.deCapturas && ajuste(AJUSTES.AVISAR_CAPTURAS)) {
+            this._alAvisarCaptura(datos);
+            return;
+        }
+
+        // Una llamada sonando: alerta propia, con sus botones. No entra en las recientes.
+        if (datos.llamada && ajuste(AJUSTES.AVISAR_LLAMADAS)) {
+            this._alSonarLlamada(datos);
+            return;
+        }
+
         this._controlador?.registrarNotificacion(datos);
 
         const esChat = datos.aplicacion.esChat;
@@ -336,9 +421,36 @@ export default class ExtensionIslaDinamica extends Extension {
             tipo: TIPOS_ALERTA.NOTIFICACION,
             // Misma clave = la alerta del chat se actualiza en lugar de crear otra.
             clave: esChat ? `chat-${datos.claveConversacion}` : datos.id,
-            duracionMs: ajuste(AJUSTES.DURACION_NOTIFICACIONES_MS),
+            // Las críticas (batería agotándose...) se quedan más tiempo.
+            duracionMs: datos.critica
+                ? Math.max(TIEMPO_ALERTA_CRITICA_MS, ajuste(AJUSTES.DURACION_NOTIFICACIONES_MS))
+                : ajuste(AJUSTES.DURACION_NOTIFICACIONES_MS),
             datos: {...datos, cantidad, mensajes},
         });
+    }
+
+    /**
+     * Suena una llamada (WhatsApp, Meet, Telegram...). Se ve mientras el aviso exista (al
+     * contestar o colgar, la app lo quita y alCerrar la quita): en la alerta o, si se
+     * oculta, en el círculo.
+     * El monitor de llamadas lo recuerda: si enseguida el navegador usa el micrófono,
+     * es esta llamada.
+     * @param {object} datos - Datos del capturador (con `llamada`).
+     */
+    _alSonarLlamada(datos) {
+        const {id, nombre} = datos.aplicacion;
+        this._llamada?.registrarLlamadaEntrante({id: id ?? nombre ?? 'llamada', nombre: nombre || 'Llamada'});
+        // Si su alerta se oculta mientras suena, la llamada queda en el círculo.
+        this._controlador?.registrarLlamadaEntrante({clave: `llamada-${datos.id}`, datos});
+    }
+
+    /**
+     * Empieza, avanza un segundo, se silencia o termina una llamada.
+     * @param {{enLlamada: boolean, id: string|null, nombre: string, transcurridoMs: number, silenciado: boolean}} estado
+     */
+    _alCambiarLlamada(estado) {
+        const mostrar = ajuste(AJUSTES.AVISAR_LLAMADAS);
+        this._controlador?.actualizarLlamada(mostrar ? estado : {...estado, enLlamada: false});
     }
 
     /**
@@ -448,6 +560,76 @@ export default class ExtensionIslaDinamica extends Extension {
             sinCola: true,
             datos: {modo, activo},
         });
+    }
+
+    /**
+     * La grabación empezó, avanzó un segundo o terminó. Con el ajuste desactivado,
+     * la isla no la muestra (y GNOME sigue con su indicador de siempre).
+     * @param {{grabando: boolean, transcurridoMs: number}} estado
+     */
+    _alCambiarGrabacion(estado) {
+        const mostrar = ajuste(AJUSTES.AVISAR_CAPTURAS);
+        this._controlador?.actualizarGrabacion(mostrar ? estado : {grabando: false, transcurridoMs: 0});
+    }
+
+    /**
+     * Aviso de la herramienta de captura: con imagen = captura hecha; sin imagen =
+     * grabación terminada (o fallida: el título lo dice GNOME). Al tocarlo se abre
+     * el archivo, como en la notificación de GNOME. No entra en las recientes.
+     * @param {object} datos - Datos de la notificación (deCapturas: true).
+     */
+    _alAvisarCaptura(datos) {
+        if (datos.miniatura) {
+            this._controlador?.agregarAlerta({
+                tipo: TIPOS_ALERTA.CAPTURA,
+                clave: 'captura',
+                duracionMs: TIEMPO_ALERTA_CAPTURA_MS,
+                datos: {miniatura: datos.miniatura, activar: datos.activar},
+            });
+            return;
+        }
+        this._controlador?.agregarAlerta({
+            tipo: TIPOS_ALERTA.GRABACION,
+            clave: 'grabacion',
+            duracionMs: TIEMPO_ALERTA_GRABACION_MS,
+            datos: {
+                titulo: datos.titulo,
+                detalle: datos.detalle,
+                duracionMs: this._grabacion?.ultimaDuracionMs ?? 0,
+                activar: datos.activar,
+            },
+        });
+    }
+
+    /**
+     * Lleva a donde suena la música (o el audio). Si el reproductor acepta Raise (Spotify,
+     * VLC...), se lo pide; si no (Brave), se busca su ventana por el proceso dueño del
+     * reproductor, prefiriendo la que muestra la canción (o la de la app del audio).
+     * @param {object|null} reproductor - El de la música o el del audio.
+     */
+    async _mostrarReproductor(reproductor) {
+        if (!reproductor)
+            return;
+        if (reproductor.puedeTraer) {
+            reproductor.mostrarVentana();
+            return;
+        }
+        const pid = await reproductor.obtenerPid();
+        // Con un audio de chat, el título es la web ("web.whatsapp.com"): se busca la ventana
+        // por el nombre de la app ("WhatsApp"), que es el título de su ventana.
+        const {titulo, aplicacion, appAudio} = reproductor.obtenerPista();
+        if (!pid || !activarVentanaDeProceso({pid, titulo: appAudio?.nombre ?? titulo}))
+            registrarAviso(`Multimedia: no se encontró la ventana de ${aplicacion}.`);
+    }
+
+    /** Abre la app Calendario de GNOME; si no está instalada, el calendario del panel. */
+    _abrirAppCalendario() {
+        this._controlador?.establecerExpandido(false);
+        const app = Shell.AppSystem.get_default().lookup_app('org.gnome.Calendar.desktop');
+        if (app)
+            app.activate();
+        else
+            this._isla?.abrirCalendarioGnome();
     }
 
     /** Abre el registro de errores con el editor de texto predeterminado. */

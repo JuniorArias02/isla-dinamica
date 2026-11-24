@@ -30,8 +30,16 @@ import {
 } from '../constantes.js';
 import {registrarInfo, protegido} from '../registro.js';
 import {aplastar, aterrizar} from './animaciones.js';
-import {ajuste, alCambiarAjuste, dejarDeEscucharAjustes, AJUSTES} from '../ajustes.js';
+import {
+    sentidoDeArrastre,
+    direccionDeSentido,
+    progresoDeArrastre,
+    debeConfirmarAsomo,
+    direccionCambioDirecto,
+} from './logicaAsomo.js';
+import {ajuste, alCambiarAjuste, dejarDeEscucharAjustes, AJUSTES, ARRASTRE_CAPSULA} from '../ajustes.js';
 import {BotonPanel} from './botonPanel.js';
+import {FASES_ASOMO} from './componentes/asomo.js';
 import {TarjetaFlotante} from './tarjetaFlotante.js';
 import {GestorInteraccion} from './interaccion.js';
 import {AlertaBluetooth} from './vistas/alertaBluetooth.js';
@@ -41,6 +49,9 @@ import {AlertaEnergia} from './vistas/alertaEnergia.js';
 import {AlertaPortapapeles} from './vistas/alertaPortapapeles.js';
 import {AlertaTemporizador} from './vistas/alertaTemporizador.js';
 import {AlertaModo} from './vistas/alertaModo.js';
+import {AlertaCaptura} from './vistas/alertaCaptura.js';
+import {AlertaGrabacion} from './vistas/alertaGrabacion.js';
+import {AlertaLlamada} from './vistas/alertaLlamada.js';
 import {MenuContextual} from './menuContextual.js';
 import {VistaExpandida, PAGINAS} from './vistas/vistaExpandida.js';
 
@@ -49,14 +60,20 @@ const POSICION_EN_PANEL = 0;
 
 /** Página de la isla abierta que corresponde a cada actividad. */
 const PAGINA_DE_ACTIVIDAD = Object.freeze({
+    [ACTIVIDADES.LLAMADA]: PAGINAS.LLAMADA,
+    [ACTIVIDADES.GRABACION]: PAGINAS.GRABACION,
+    [ACTIVIDADES.HORA]: PAGINAS.CALENDARIO,
     [ACTIVIDADES.MUSICA]: PAGINAS.MUSICA,
+    [ACTIVIDADES.AUDIO]: PAGINAS.AUDIO,
     [ACTIVIDADES.TEMPORIZADOR]: PAGINAS.TEMPORIZADOR,
     [ACTIVIDADES.AURICULARES]: PAGINAS.DISPOSITIVOS,
 });
 
 /** Actividad que corresponde a cada página (solo las que pueden ir en la cápsula). */
 const ACTIVIDAD_DE_PAGINA = Object.freeze({
+    [PAGINAS.CALENDARIO]: ACTIVIDADES.HORA,
     [PAGINAS.MUSICA]: ACTIVIDADES.MUSICA,
+    [PAGINAS.AUDIO]: ACTIVIDADES.AUDIO,
     [PAGINAS.TEMPORIZADOR]: ACTIVIDADES.TEMPORIZADOR,
 });
 
@@ -72,11 +89,17 @@ export class IslaUI {
      * @param {Function} acciones.establecerNoMolestar - Recibe true/false (menú del clic derecho).
      * @param {Function} acciones.abrirAjustes - Abre la ventana de ajustes.
      * @param {Function} acciones.abrirRegistro - Abre el registro de errores.
+     * @param {object} acciones.calendario - {abrir(), actualizar()} de la página Calendario.
+     * @param {object} acciones.capturas - {abrirCaptura(), abrirGrabacion(), detenerGrabacion()}.
+     * @param {object} acciones.llamada - {mostrar(), alternarSilencio()} de la llamada en curso.
      * @param {object} acciones.notificaciones - {activar(id), descartar(id), limpiar()} de la página de notificaciones.
      * @param {object} acciones.multimedia - alternar, siguiente, anterior, mostrarReproductor, obtenerPosicion.
+     * @param {object} acciones.audio - Las mismas, sobre el reproductor del audio de chat (nota de voz).
+     * @param {Function} acciones.mostrarLlamadaEntrante - Vuelve a mostrar el aviso de la llamada que suena.
      * @param {object} acciones.temporizador - iniciar(ms), sumar(ms), pausar(), reanudar(), cancelar().
      * @param {Function} acciones.establecerActividadPreferida - Recibe la actividad a ver en la cápsula.
      * @param {Function} acciones.cambiarVistaCompacta - Recibe +1/-1; devuelve false si ya estaba en el extremo.
+     * @param {Function} acciones.vistaVecina - Recibe +1/-1; devuelve la actividad de al lado o null.
      */
     constructor(acciones) {
         this._acciones = acciones;
@@ -87,6 +110,9 @@ export class IslaUI {
         this._claveAlertaMostrada = null;
         this._paginaSolicitada = null;
         this._idRecolocar = 0;
+        this._indicadorGrabacionOculto = false;
+        /** Arrastre de la cápsula en curso: {sentido, objetivo, principal, inerte, directo}. */
+        this._arrastre = null;
 
         this._boton = new BotonPanel();
         // Si GNOME destruye la cápsula por su cuenta (ej. al cerrar sesión), la isla deja de dibujar:
@@ -110,17 +136,33 @@ export class IslaUI {
             [TIPOS_ALERTA.PORTAPAPELES]: {vista: new AlertaPortapapeles(), ancho: ANCHO_ALERTA_COMPACTA_PX},
             [TIPOS_ALERTA.TEMPORIZADOR]: {vista: new AlertaTemporizador(), ancho: ANCHO_ALERTA_PX},
             [TIPOS_ALERTA.MODO]: {vista: new AlertaModo(), ancho: ANCHO_ALERTA_COMPACTA_PX},
+            [TIPOS_ALERTA.CAPTURA]: {vista: new AlertaCaptura(), ancho: ANCHO_ALERTA_PX},
+            [TIPOS_ALERTA.GRABACION]: {vista: new AlertaGrabacion(), ancho: ANCHO_ALERTA_PX},
+            [TIPOS_ALERTA.LLAMADA]: {
+                vista: new AlertaLlamada({
+                    alContestar: datos => this._contestarLlamada(datos),
+                    alRechazar: datos => this._rechazarLlamada(datos),
+                }),
+                ancho: ANCHO_ALERTA_PX,
+            },
         };
         this._expandida = new VistaExpandida({
             multimedia: acciones.multimedia,
+            audio: acciones.audio,
             alPulsarFecha: () => this._acciones.abrirCalendario(),
             alCambiarModoRuido: (ruta, modo) => this._acciones.establecerModoRuido(ruta, modo),
             notificaciones: acciones.notificaciones,
             temporizador: acciones.temporizador,
+            alAbrirCalendario: () => this._acciones.calendario.abrir(),
+            alDetenerGrabacion: () => this._acciones.capturas.detenerGrabacion(),
+            llamada: acciones.llamada,
             // Ver la página de notificaciones las marca como vistas.
             alVerPagina: id => {
                 if (id === PAGINAS.NOTIFICACIONES)
                     this._marcarNotificacionesVistas();
+                // Por si el calendario del panel quedó en otro mes: se vuelve a pedir el actual.
+                if (id === PAGINAS.CALENDARIO)
+                    Promise.resolve().then(() => this._acciones?.calendario.actualizar());
                 // Como en el móvil: la actividad que el usuario mira es la que queda en la cápsula.
                 // (Las notificaciones son temporales: no se quedan.) Se avisa después del dibujado
                 // en curso para no volver a entrar en el controlador mientras emite la vista.
@@ -143,6 +185,9 @@ export class IslaUI {
                 establecerNoMolestar: activo => this._acciones.establecerNoMolestar(activo),
                 abrirAjustes: () => this._acciones.abrirAjustes(),
                 abrirRegistro: () => this._acciones.abrirRegistro(),
+                capturarPantalla: () => this._acciones.capturas.abrirCaptura(),
+                grabarPantalla: () => this._acciones.capturas.abrirGrabacion(),
+                detenerGrabacion: () => this._acciones.capturas.detenerGrabacion(),
             },
             obtenerModos: () => this._vista.modos ?? {noMolestar: false, avion: false},
         });
@@ -156,8 +201,8 @@ export class IslaUI {
                 pulsar: () => this._alPulsar(),
                 mantenerAlerta: mantener => this._acciones.mantenerAlerta(mantener),
                 cambiarVista: direccion => this._cambiarVista(direccion),
-                seguirArrastreCapsula: dx => this._boton.pildora.seguirArrastre(dx),
-                soltarArrastreCapsula: () => this._boton.pildora.soltarArrastre(),
+                seguirArrastreCapsula: dx => this._seguirArrastreCapsula(dx),
+                soltarArrastreCapsula: final => this._soltarArrastreCapsula(final),
                 descartarDeslizando: () => this._descartarDeslizando(),
                 abrirMenu: () => this._abrirMenu(),
             },
@@ -170,6 +215,12 @@ export class IslaUI {
      */
     montar(rol) {
         Main.panel.addToStatusArea(rol, this._boton, POSICION_EN_PANEL, 'center');
+        // La cápsula no usa menú de GNOME (el suyo va con clic derecho), pero GNOME le registra
+        // uno vacío en el gestor de menús del panel. Ese gestor abre el menú del botón vecino
+        // (el del reloj) cuando el puntero pasa por encima mientras se arrastra la cápsula,
+        // y corta el arrastre: se quita de ahí.
+        if (this._boton.menu)
+            Main.panel.menuManager.removeMenu(this._boton.menu);
         // Sin trackFullscreen: GNOME volvería a hacer visible la tarjeta oculta en cada
         // cambio de ventanas. La visibilidad la controla solo la TarjetaFlotante.
         Main.layoutManager.addTopChrome(this._tarjeta);
@@ -215,6 +266,23 @@ export class IslaUI {
             this._relojGnome?.show();
     }
 
+    /**
+     * Mientras se graba, la isla muestra el contador y el botón para detener: el
+     * indicador rojo de GNOME sobra. Se oculta su contenedor del panel (el indicador
+     * se vuelve a mostrar solo en cada grabación, el contenedor no).
+     * @param {boolean} grabando
+     */
+    _aplicarIndicadorGrabacion(grabando) {
+        const contenedor = Main.panel.statusArea.screenRecording?.container ?? null;
+        if (!contenedor)
+            return;
+        const ocultar = grabando && ajuste(AJUSTES.OCULTAR_INDICADOR_GRABACION) && ajuste(AJUSTES.AVISAR_CAPTURAS);
+        if (ocultar === this._indicadorGrabacionOculto)
+            return;
+        this._indicadorGrabacionOculto = ocultar;
+        contenedor.visible = !ocultar;
+    }
+
     _restaurarRelojDeGnome() {
         dejarDeEscucharAjustes(this);
         this._relojGnome?.show();
@@ -236,12 +304,16 @@ export class IslaUI {
         this._vista = vista;
         const {estado, alerta, pista, dispositivos} = vista;
 
+        this._comprobarAsomo(vista);
         this._boton.actualizar(vista);
         this._menu.actualizarModos(vista.modos);
         if (this._expandida.paginaVisible === PAGINAS.NOTIFICACIONES)
             this._vistasHastaMs = Date.now();
         this._boton.pildora.establecerNoLeidas(this._hayNoLeidas());
-        this._expandida.actualizar(pista, dispositivos, vista.reloj, vista.notificaciones ?? [], vista.temporizador);
+        this._expandida.actualizar(pista, dispositivos, vista.reloj, vista.notificaciones ?? [], vista.temporizador,
+            vista.calendario ?? null, vista.grabacion ?? null, vista.llamada ?? null, vista.audio ?? null);
+        this._menu.actualizarGrabacion(Boolean(vista.grabacion?.grabando));
+        this._aplicarIndicadorGrabacion(Boolean(vista.grabacion?.grabando));
 
         switch (estado) {
         case ESTADOS.ALERTA:
@@ -264,6 +336,13 @@ export class IslaUI {
     /** Destruye todo en orden inverso. Se llama desde disable(). */
     destruir() {
         this._destruida = true;
+        // El indicador de grabación de GNOME vuelve a verse.
+        if (this._indicadorGrabacionOculto) {
+            const contenedor = Main.panel.statusArea.screenRecording?.container;
+            if (contenedor)
+                contenedor.visible = true;
+            this._indicadorGrabacionOculto = false;
+        }
         Main.layoutManager.disconnectObject(this);
         if (this._idRecolocar) {
             global.compositor.get_laters().remove(this._idRecolocar);
@@ -287,14 +366,22 @@ export class IslaUI {
 
     _abrir() {
         // Sobre el círculo → la página de lo que muestra el círculo.
-        // Con mensajes sin ver → notificaciones. Si no → la actividad de la cápsula (o música).
+        // En llamada → la llamada (es lo urgente). Con mensajes sin ver → notificaciones.
+        // Si no → la actividad de la cápsula (o el calendario).
         const {principal, secundaria} = this._vista.actividades ?? {};
+        // El círculo de una llamada que suena no tiene página: vuelve su aviso.
+        if (this._boton.burbuja.hover && secundaria === ACTIVIDADES.LLAMADA_ENTRANTE) {
+            this._acciones.mostrarLlamadaEntrante();
+            return;
+        }
         if (this._boton.burbuja.hover && secundaria)
             this._paginaSolicitada = PAGINA_DE_ACTIVIDAD[secundaria];
+        else if (principal === ACTIVIDADES.LLAMADA)
+            this._paginaSolicitada = PAGINAS.LLAMADA;
         else if (this._hayNoLeidas())
             this._paginaSolicitada = PAGINAS.NOTIFICACIONES;
         else
-            this._paginaSolicitada = PAGINA_DE_ACTIVIDAD[principal] ?? PAGINAS.MUSICA;
+            this._paginaSolicitada = PAGINA_DE_ACTIVIDAD[principal] ?? PAGINAS.CALENDARIO;
         this._acciones.abrirTarjeta();
     }
 
@@ -320,7 +407,10 @@ export class IslaUI {
             this._acciones.descartarAlerta(alerta.clave);
             switch (alerta.tipo) {
             case TIPOS_ALERTA.NOTIFICACION:
-                // Abre la app/chat que envió la notificación (como el banner nativo).
+            case TIPOS_ALERTA.CAPTURA:
+            case TIPOS_ALERTA.GRABACION:
+            case TIPOS_ALERTA.LLAMADA:
+                // Abre la app/chat (o la captura / el vídeo), como el aviso nativo de GNOME.
                 alerta.datos.activar?.();
                 break;
             case TIPOS_ALERTA.BLUETOOTH:
@@ -344,7 +434,12 @@ export class IslaUI {
         }
 
         // Tocar el círculo intercambia las actividades (la del círculo pasa a la cápsula).
+        // Si es una llamada que suena (aviso oculto), vuelve el aviso con sus botones.
         const secundaria = this._vista.actividades?.secundaria;
+        if (this._boton.burbuja.hover && secundaria === ACTIVIDADES.LLAMADA_ENTRANTE) {
+            this._acciones.mostrarLlamadaEntrante();
+            return;
+        }
         if (this._boton.burbuja.hover && ACTIVIDAD_DE_PAGINA[PAGINA_DE_ACTIVIDAD[secundaria]]) {
             this._acciones.establecerActividadPreferida(secundaria);
             return;
@@ -359,6 +454,34 @@ export class IslaUI {
         this._menu.alternar();
     }
 
+    // ───────────────────────── Llamada que suena ─────────────────────────
+
+    /**
+     * Botón verde: contesta con el botón del aviso si la app lo ofrece; si no, abre la
+     * app (ahí se contesta).
+     * @param {object} datos - Datos de la alerta de llamada.
+     */
+    _contestarLlamada(datos) {
+        if (!datos)
+            return;
+        this._acciones.descartarAlerta(`llamada-${datos.id}`);
+        if (datos.llamada?.contestar)
+            datos.llamada.contestar();
+        else
+            datos.activar?.();
+    }
+
+    /**
+     * Botón rojo: rechaza con el botón del aviso si existe; si no, solo quita la alerta.
+     * @param {object} datos - Datos de la alerta de llamada.
+     */
+    _rechazarLlamada(datos) {
+        if (!datos)
+            return;
+        this._acciones.descartarAlerta(`llamada-${datos.id}`);
+        datos.llamada?.rechazar?.();
+    }
+
     /** Gesto de deslizar sobre la isla grande: cierra la tarjeta o quita la alerta. */
     _descartarDeslizando() {
         const {estado, alerta} = this._vista;
@@ -368,6 +491,111 @@ export class IslaUI {
                 this._acciones.temporizador.cancelar();
         } else if (estado === ESTADOS.EXPANDIDO)
             this._acciones.cerrarTarjeta();
+    }
+
+    // ───────────────────────── Arrastrar la cápsula ─────────────────────────
+    // Según el ajuste "Al arrastrar la cápsula":
+    //   asomar  → la vista de al lado se asoma siguiendo al puntero (Asomo);
+    //   cambiar → la cápsula se estira un poco y, al soltar, cambia de vista (_cambiarVista).
+
+    /**
+     * El puntero se mueve con la cápsula presionada. La primera vez que pasa el umbral
+     * se elige la vista de al lado (según el sentido) y desde ahí la sigue el asomo.
+     * @param {number} desplazamiento - Píxeles en horizontal desde que se presionó.
+     */
+    _seguirArrastreCapsula(desplazamiento) {
+        if (!this._arrastre) {
+            const sentido = sentidoDeArrastre(desplazamiento);
+            if (!sentido)
+                return;
+            this._arrastre = this._empezarArrastre(sentido);
+        }
+        const arrastre = this._arrastre;
+        if (arrastre.inerte)
+            return;
+        // "Cambiar al instante", o sin otra vista a la que ir: la cápsula se estira un poco.
+        if (!arrastre.objetivo) {
+            this._boton.pildora.seguirArrastre(desplazamiento);
+            return;
+        }
+        this._boton.moverAsomo(progresoDeArrastre(desplazamiento, arrastre.sentido));
+    }
+
+    /**
+     * @param {number} sentido - +1 o -1.
+     * @returns {{sentido: number, objetivo: string|null, principal: string|null, inerte: boolean, directo: boolean}}
+     */
+    _empezarArrastre(sentido) {
+        const {estado, actividades} = this._vista;
+        const principal = actividades?.principal ?? null;
+        const inerte = {sentido, objetivo: null, principal, inerte: true, directo: false};
+        if (estado !== ESTADOS.REPOSO && estado !== ESTADOS.MULTIMEDIA)
+            return inerte;
+        if (ajuste(AJUSTES.ARRASTRE_CAPSULA) === ARRASTRE_CAPSULA.CAMBIAR)
+            return {sentido, objetivo: null, principal, inerte: false, directo: true};
+        const objetivo = this._acciones.vistaVecina(direccionDeSentido(sentido));
+        if (!objetivo)
+            return {sentido, objetivo: null, principal, inerte: false, directo: false};
+        if (!this._boton.empezarAsomo(objetivo))
+            return inerte;
+        return {sentido, objetivo, principal, inerte: false, directo: false};
+    }
+
+    /**
+     * Soltó la cápsula (o el gesto se canceló): se confirma o vuelve a su sitio.
+     * @param {{desplazamiento: number, velocidad: number}|null} final - null si se canceló.
+     */
+    _soltarArrastreCapsula(final) {
+        const arrastre = this._arrastre;
+        this._arrastre = null;
+        if (arrastre?.directo) {
+            const {estado} = this._vista;
+            const direccion = final && (estado === ESTADOS.REPOSO || estado === ESTADOS.MULTIMEDIA)
+                ? direccionCambioDirecto(final.desplazamiento, final.velocidad)
+                : 0;
+            if (direccion)
+                this._cambiarVista(direccion);
+            else
+                this._boton.pildora.soltarArrastre();
+            return;
+        }
+        if (!arrastre || !arrastre.objetivo) {
+            if (!arrastre?.inerte)
+                this._boton.pildora.soltarArrastre();
+            return;
+        }
+        if (arrastre.inerte || this._boton.faseAsomo !== FASES_ASOMO.SIGUIENDO)
+            return;
+
+        const progreso = progresoDeArrastre(final?.desplazamiento ?? 0, arrastre.sentido);
+        if (final && debeConfirmarAsomo(progreso, final.velocidad * arrastre.sentido)) {
+            // Primero el asomo pasa a "confirmando" (deja de copiar datos), luego cambia la vista.
+            this._boton.confirmarAsomo();
+            this._acciones.establecerActividadPreferida(arrastre.objetivo);
+        } else {
+            this._boton.cancelarAsomo();
+        }
+    }
+
+    /**
+     * Si mientras se asoma llega una alerta, se abre la isla o la vista de al lado deja de
+     * existir (ej. la música se detuvo), el asomo se corta al instante.
+     * @param {import('../controlador.js').Vista} vista
+     */
+    _comprobarAsomo(vista) {
+        if (!this._boton.asomoActivo || this._boton.faseAsomo === FASES_ASOMO.CONFIRMANDO)
+            return;
+        const {estado, actividades} = vista;
+        const objetivo = this._arrastre?.objetivo ?? this._boton.objetivoAsomo;
+        const principal = this._arrastre?.principal ?? actividades?.principal;
+        const sigue = (estado === ESTADOS.REPOSO || estado === ESTADOS.MULTIMEDIA) &&
+            actividades?.principal === principal &&
+            Boolean(actividades?.vistas?.includes(objetivo));
+        if (sigue)
+            return;
+        this._boton.abortarAsomo();
+        if (this._arrastre)
+            this._arrastre.inerte = true;
     }
 
     /**

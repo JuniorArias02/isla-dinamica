@@ -173,6 +173,27 @@ function animarConCurvaIntegrada(actor, propiedades, {resorte, retraso, alTermin
     });
 }
 
+/**
+ * Anima una propiedad GObject propia (ej. el progreso de un componente) con un resorte.
+ * `actor.ease()` solo sabe animar propiedades de Clutter; esta usa `ease_property`.
+ *
+ * @param {Clutter.Actor} actor
+ * @param {string} propiedad - Nombre de la propiedad.
+ * @param {number} valor - Valor destino.
+ * @param {object} opciones
+ * @param {{respuesta: number, amortiguacion: number}} opciones.resorte
+ * @param {Function} [opciones.alTerminar] - Solo si la animación llega al final.
+ */
+export function animarPropiedadConResorte(actor, propiedad, valor, {resorte, alTerminar}) {
+    const conRebote = resorte.amortiguacion < 0.8;
+    actor.ease_property(propiedad, valor, {
+        duration: Math.round(resorte.respuesta * (conRebote ? 1100 : 800)),
+        mode: conRebote ? Clutter.AnimationMode.EASE_OUT_BACK : Clutter.AnimationMode.EASE_OUT_CUBIC,
+        animationRequired: animacionObligatoria(),
+        onComplete: alTerminar,
+    });
+}
+
 // ───────────────────────── Contenido con desenfoque ─────────────────────────
 
 function obtenerDesenfoque(actor) {

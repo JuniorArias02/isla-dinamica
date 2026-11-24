@@ -63,3 +63,12 @@ export function formatearDuracionMin(minutos) {
         return `${resto} min`;
     return resto === 0 ? `${horas} h` : `${horas} h ${resto} min`;
 }
+
+/**
+ * Tiempo transcurrido "m:ss" o "h:mm:ss" (redondea hacia abajo: un contador que sube).
+ * @param {number} milisegundos
+ * @returns {string}
+ */
+export function formatearTranscurrido(milisegundos) {
+    return formatearCuentaAtras(Math.floor(Math.max(0, milisegundos) / 1000) * 1000);
+}

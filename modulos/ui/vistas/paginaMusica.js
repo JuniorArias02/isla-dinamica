@@ -4,6 +4,15 @@
 /**
  * PaginaMusica — página del carrusel con el reproductor:
  * portada grande, título, artista, app, onda, progreso y controles.
+ *
+ * Con un audio de un chat (nota de voz de WhatsApp) cambia de diseño:
+ *
+ *   [logo de WhatsApp]  Audio de WhatsApp        ▌▌▌
+ *                       Toca para ir al chat
+ *   0:12 ━━━━━━━━━━━━━━━━──────────── 0:30
+ *                       ( ▶ )
+ *
+ * Solo reproducir/pausa: un audio no tiene anterior ni siguiente.
  */
 
 import Clutter from 'gi://Clutter';
@@ -11,11 +20,12 @@ import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
-import {INTERVALO_PROGRESO_MS} from '../../constantes.js';
+import {INTERVALO_PROGRESO_MS, TIPOS_PISTA} from '../../constantes.js';
 import {registrarDepuracion, protegido} from '../../registro.js';
-import {ICONOS, iconoDeAplicacion} from '../iconos.js';
-import {deslizarEntrada} from '../animaciones.js';
+import {ICONOS, iconoDeAplicacion, iconoDeAppDeAudio} from '../iconos.js';
+import {deslizarEntrada, latir, detenerLatido, agregarEfectoPulsacion} from '../animaciones.js';
 import {Caratula} from '../componentes/caratula.js';
+import {crearEsqueleto} from '../componentes/esqueleto.js';
 import {Onda} from '../componentes/onda.js';
 import {BarraProgreso} from '../componentes/barraProgreso.js';
 import {BotonControl} from '../componentes/botonControl.js';
@@ -36,6 +46,7 @@ class PaginaMusica extends St.BoxLayout {
         this._pista = null;
         this._activa = false;
         this._idProgreso = 0;
+        this._latiendo = false;
 
         this._construirCabecera();
 
@@ -48,7 +59,10 @@ class PaginaMusica extends St.BoxLayout {
 
         this._construirControles();
 
-        this.connect('destroy', () => this._detenerProgreso());
+        this.connect('destroy', () => {
+            this._detenerProgreso();
+            this._sincronizarLatido(false);
+        });
     }
 
     _construirCabecera() {
@@ -66,13 +80,21 @@ class PaginaMusica extends St.BoxLayout {
         this._artista = new St.Label({style_class: 'isla-musica-artista'});
 
         const filaApp = new St.BoxLayout({style_class: 'isla-musica-app'});
+        this._filaApp = filaApp;
         this._iconoApp = new St.Icon({style_class: 'isla-musica-app-icono', y_align: Clutter.ActorAlign.CENTER});
         this._nombreApp = new St.Label({y_align: Clutter.ActorAlign.CENTER});
         filaApp.add_child(this._iconoApp);
         filaApp.add_child(this._nombreApp);
 
+        // Esqueleto: ocupa el lugar del título y del artista mientras carga la canción siguiente.
+        this._esqueletoTitulo = crearEsqueleto(150, 14);
+        this._esqueletoArtista = crearEsqueleto(96, 11);
+        this._esqueletoArtista.add_style_class_name('isla-esqueleto-segundo');
+
         this._textos.add_child(this._titulo);
+        this._textos.add_child(this._esqueletoTitulo);
         this._textos.add_child(this._artista);
+        this._textos.add_child(this._esqueletoArtista);
         this._textos.add_child(filaApp);
 
         // Clic en los textos → traer la ventana del reproductor.
@@ -87,7 +109,18 @@ class PaginaMusica extends St.BoxLayout {
         this._onda = new Onda({barras: 5, claseExtra: 'isla-onda-grande'});
         this._onda.y_align = Clutter.ActorAlign.START;
 
-        fila.add_child(this._caratula);
+        // La portada también lleva a donde suena (es lo primero que se toca).
+        this._botonCaratula = new St.Button({
+            style_class: 'isla-musica-boton-caratula',
+            child: this._caratula,
+            y_align: Clutter.ActorAlign.CENTER,
+            can_focus: true,
+            accessible_name: 'Ir a donde suena la música',
+        });
+        this._botonCaratula.connect('clicked', protegido('música: mostrar reproductor (portada)', () => this._acciones.mostrarReproductor()));
+        agregarEfectoPulsacion(this._botonCaratula);
+
+        fila.add_child(this._botonCaratula);
         fila.add_child(this._botonTextos);
         fila.add_child(this._onda);
         this.add_child(fila);
@@ -128,35 +161,61 @@ class PaginaMusica extends St.BoxLayout {
         this._pista = pista;
         if (!pista) {
             this._detenerProgreso();
+            this._sincronizarLatido(false);
             return;
         }
 
-        const pistaNueva = anterior?.titulo !== pista.titulo || anterior?.nombreBus !== pista.nombreBus;
+        const cargando = Boolean(pista.cargando);
+        // Una canción nueva, o la que llega tras el esqueleto de carga.
+        const pistaNueva = anterior?.titulo !== pista.titulo || anterior?.nombreBus !== pista.nombreBus ||
+            (Boolean(anterior?.cargando) && !cargando);
 
-        this._caratula.establecer(pista.urlCaratula);
-        this._titulo.text = pista.titulo;
-        this._artista.text = pista.artista || pista.album || '';
-        this._artista.visible = Boolean(this._artista.text);
+        // Audio de un chat: el logo de la app como portada, sin anterior ni siguiente.
+        const audio = pista.tipo === TIPOS_PISTA.AUDIO;
+        if (audio)
+            this.add_style_class_name('isla-pagina-audio');
+        else
+            this.remove_style_class_name('isla-pagina-audio');
+        this._caratula.establecerIcono(audio ? iconoDeAppDeAudio(pista.appAudio) : null);
+
+        this._caratula.establecerCargando(cargando);
+        if (!cargando)
+            this._caratula.establecer(pista.urlCaratula);
+        this._titulo.text = audio ? `Audio de ${pista.appAudio?.nombre ?? 'un chat'}` : pista.titulo;
+        this._titulo.visible = !cargando;
+        this._artista.text = audio ? 'Toca para ir al chat' : pista.artista || pista.album || '';
+        this._artista.visible = !cargando && Boolean(this._artista.text);
+        this._esqueletoTitulo.visible = cargando;
+        this._esqueletoArtista.visible = cargando;
         this._nombreApp.text = pista.aplicacion;
         this._iconoApp.gicon = iconoDeAplicacion(pista.aplicacion, pista.entradaEscritorio);
         this._iconoApp.visible = Boolean(this._iconoApp.gicon);
+        // En el audio, la app ya está en el título y en el logo.
+        this._filaApp.visible = !audio;
+        this._botonAnterior.visible = !audio;
+        this._botonSiguiente.visible = !audio;
+        this._botonCaratula.accessible_name = audio ? 'Ir al chat' : 'Ir a donde suena la música';
 
-        this._onda.establecerActiva(pista.reproduciendo && this._activa);
+        // Mientras carga no suena nada: sin onda.
+        this._onda.visible = !cargando;
+        this._onda.establecerActiva(pista.reproduciendo && !cargando && this._activa);
         this._botonAlternar.establecerIcono(pista.reproduciendo ? ICONOS.PAUSA : ICONOS.REPRODUCIR);
         this._botonAlternar.establecerHabilitado(pista.puedeAlternar);
         this._botonAnterior.establecerHabilitado(pista.puedeAnterior);
         this._botonSiguiente.establecerHabilitado(pista.puedeSiguiente);
         this._botonTextos.reactive = pista.puedeMostrar;
+        this._botonCaratula.reactive = pista.puedeMostrar;
 
-        this._progreso.visible = pista.duracionUs > 0;
+        this._progreso.visible = !cargando && pista.duracionUs > 0;
         this._progreso.establecerBuscable(Boolean(pista.puedeBuscar));
-        if (pistaNueva) {
+        if (pistaNueva && !cargando) {
             this._progreso.reiniciar(pista.duracionUs);
             if (this._activa)
                 deslizarEntrada(this._textos, {desde: 18});
         }
 
         this._sincronizarProgreso();
+        this._sincronizarLatido(cargando && this._activa);
     }
 
     /**
@@ -168,8 +227,26 @@ class PaginaMusica extends St.BoxLayout {
         if (activa === this._activa)
             return;
         this._activa = activa;
-        this._onda.establecerActiva(activa && Boolean(this._pista?.reproduciendo));
+        const cargando = Boolean(this._pista?.cargando);
+        this._onda.establecerActiva(activa && !cargando && Boolean(this._pista?.reproduciendo));
         this._sincronizarProgreso();
+        this._sincronizarLatido(activa && cargando);
+    }
+
+    /**
+     * El esqueleto late solo mientras se ve (página a la vista y cargando).
+     * @param {boolean} debeLatir
+     */
+    _sincronizarLatido(debeLatir) {
+        if (debeLatir === this._latiendo)
+            return;
+        this._latiendo = debeLatir;
+        for (const actor of [this._caratula, this._esqueletoTitulo, this._esqueletoArtista]) {
+            if (debeLatir)
+                latir(actor);
+            else
+                detenerLatido(actor);
+        }
     }
 
     // ───────────────────────── Progreso ─────────────────────────
@@ -177,7 +254,7 @@ class PaginaMusica extends St.BoxLayout {
     _sincronizarProgreso() {
         const debeRefrescar = this._activa && this._pista?.reproduciendo && this._pista.duracionUs > 0;
 
-        if (this._activa && this._pista)
+        if (this._activa && this._pista && !this._pista.cargando)
             this._consultarPosicion(false);
 
         if (debeRefrescar && !this._idProgreso) {

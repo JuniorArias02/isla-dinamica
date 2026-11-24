@@ -158,6 +158,25 @@ ejecutar('Controlador', async () => {
         controlador.destruir();
     });
 
+    await prueba('la vista de al lado (para asomarse) es circular y no existe con una sola vista', () => {
+        const {controlador} = crear();
+        igual(controlador.vistaVecina(+1), null, 'con solo la hora no hay a dónde asomarse');
+
+        controlador.actualizarPista(SONANDO);
+        controlador.establecerActividadPreferida('hora');
+        igual(controlador.vistaVecina(+1), 'musica', 'desde la hora, la siguiente es la música');
+        igual(controlador.vistaVecina(-1), 'musica', 'con dos vistas, las dos direcciones llevan a la otra');
+
+        controlador.actualizarTemporizador(TEMPORIZADOR_EN_MARCHA);
+        controlador.establecerActividadPreferida('hora');
+        igual(controlador.vistaVecina(+1), 'musica');
+        igual(controlador.vistaVecina(-1), 'temporizador', 'desde la primera, hacia atrás da la vuelta');
+
+        controlador.actualizarGrabacion({grabando: true, transcurridoMs: 0});
+        igual(controlador.vistaVecina(+1), null, 'grabando no se puede cambiar la cápsula');
+        controlador.destruir();
+    });
+
     // ───────────── Notificaciones y privacidad ─────────────
 
     await prueba('las notificaciones recientes se guardan y se pueden quitar', () => {
@@ -185,6 +204,83 @@ ejecutar('Controlador', async () => {
         controlador.agregarAlerta({tipo: 'modo', clave: 'modo', duracionMs: 2000, datos: {}, sinCola: true});
         controlador.establecerExpandido(false);
         igual(controlador.alertaActual, null);
+        controlador.destruir();
+    });
+
+    await prueba('grabando la pantalla, la grabación ocupa la cápsula y la música pasa al círculo', () => {
+        const {controlador, registro} = crear();
+        controlador.actualizarPista(SONANDO);
+        controlador.actualizarGrabacion({grabando: true, transcurridoMs: 4000});
+        igual(actividades(registro), 'grabacion/musica');
+        igual(registro.vista.grabacion, {grabando: true, transcurridoMs: 4000});
+        verdadero(!controlador.cambiarVistaCompacta(-1), 'deslizar la cápsula rebota mientras se graba');
+        controlador.actualizarGrabacion({grabando: false, transcurridoMs: 0});
+        igual(actividades(registro), 'musica/null');
+        controlador.destruir();
+    });
+
+    await prueba('los eventos del calendario llegan a la vista', () => {
+        const {controlador, registro} = crear();
+        const calendario = {hayCalendarios: true, inicioSemana: 1, eventos: [{id: 'a', titulo: 'Reunión'}]};
+        controlador.actualizarCalendario(calendario);
+        igual(registro.vista.calendario, calendario);
+        controlador.destruir();
+    });
+
+    await prueba('en llamada, la llamada ocupa la cápsula (por delante de la grabación) y no se puede deslizar', () => {
+        const {controlador, registro} = crear();
+        controlador.actualizarPista(SONANDO);
+        controlador.actualizarGrabacion({grabando: true, transcurridoMs: 1000});
+        controlador.actualizarLlamada({enLlamada: true, id: 'meet', nombre: 'Google Meet', transcurridoMs: 3000, silenciado: false});
+        igual(actividades(registro), 'llamada/musica');
+        igual(registro.vista.llamada.nombre, 'Google Meet');
+        verdadero(!controlador.cambiarVistaCompacta(+1), 'deslizar rebota durante la llamada');
+        igual(controlador.vistaVecina(+1), null, 'no hay a dónde asomarse durante la llamada');
+        controlador.actualizarLlamada({enLlamada: false, id: null, nombre: '', transcurridoMs: 0, silenciado: false});
+        igual(actividades(registro), 'grabacion/musica');
+        controlador.destruir();
+    });
+
+    await prueba('una llamada sonando va por delante de una notificación', () => {
+        const {controlador} = crear();
+        controlador.agregarAlerta({tipo: 'notificacion', clave: 'n', duracionMs: 4000, datos: {}});
+        controlador.agregarAlerta({tipo: 'llamada', clave: 'llamada-1', duracionMs: 45000, datos: {}});
+        igual(controlador.alertaActual.tipo, 'llamada');
+        controlador.descartarAlerta('llamada-1');
+        igual(controlador.alertaActual?.tipo, 'notificacion', 'al dejar de sonar vuelve la notificación');
+        controlador.destruir();
+    });
+
+    await prueba('un audio de WhatsApp es una vista aparte de la música (y va primero mientras suena)', () => {
+        const {controlador, registro} = crear();
+        controlador.actualizarPista(SONANDO);
+        controlador.actualizarAudio({titulo: 'web.whatsapp.com', tipo: 'audio', reproduciendo: true});
+        igual(registro.vista.actividades.vistas, ['hora', 'musica', 'audio']);
+        igual(actividades(registro), 'audio/musica');
+        igual(registro.vista.audio.titulo, 'web.whatsapp.com');
+        verdadero(controlador.cambiarVistaCompacta(-1), 'se puede pasar a la música');
+        igual(actividades(registro), 'musica/audio');
+        controlador.actualizarAudio(null);
+        igual(registro.vista.actividades.vistas, ['hora', 'musica']);
+        controlador.destruir();
+    });
+
+    await prueba('una llamada que suena: al ocultar su aviso queda en el círculo, y al tocarlo vuelve', () => {
+        const {controlador, registro} = crear();
+        controlador.actualizarDispositivos(AURICULARES);
+        controlador.registrarLlamadaEntrante({clave: 'llamada-1', datos: {titulo: 'Ana'}});
+        igual(controlador.alertaActual?.tipo, 'llamada');
+        igual(registro.vista.actividades.secundaria, 'auriculares', 'con el aviso a la vista, el círculo no cambia');
+
+        controlador.descartarAlerta('llamada-1');
+        igual(registro.vista.actividades.secundaria, 'llamada-entrante', 'aviso oculto → círculo de la llamada');
+
+        controlador.mostrarLlamadaEntrante();
+        igual(controlador.alertaActual?.clave, 'llamada-1', 'tocar el círculo vuelve a mostrar el aviso');
+
+        controlador.quitarLlamadaEntrante('llamada-1');
+        igual(controlador.alertaActual, null);
+        igual(registro.vista.actividades.secundaria, 'auriculares', 'al dejar de sonar, el círculo vuelve a lo de antes');
         controlador.destruir();
     });
 

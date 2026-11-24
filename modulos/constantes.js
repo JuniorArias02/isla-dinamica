@@ -34,18 +34,39 @@ export const ACTIVIDADES = Object.freeze({
     HORA: 'hora',
     TEMPORIZADOR: 'temporizador',
     MUSICA: 'musica',
+    /** Un audio de un chat sonando (nota de voz de WhatsApp): va aparte de la música. */
+    AUDIO: 'audio',
+    /** Solo en el círculo: una llamada que suena y cuyo aviso se ocultó (al tocarlo vuelve). */
+    LLAMADA_ENTRANTE: 'llamada-entrante',
     /** Solo en el círculo: batería de los auriculares cuando no hay otra actividad. */
     AURICULARES: 'auriculares',
+    /** Grabación de pantalla en curso: mientras dura, ocupa siempre la cápsula. */
+    GRABACION: 'grabacion',
+    /** Llamada o videollamada en curso (Meet, WhatsApp, Zoom...): manda sobre todo lo demás. */
+    LLAMADA: 'llamada',
+});
+
+/**
+ * Qué suena en el reproductor (servicio de música → interfaz).
+ * @enum {string}
+ */
+export const TIPOS_PISTA = Object.freeze({
+    /** Una canción o un vídeo: portada, título, artista, anterior / siguiente. */
+    MUSICA: 'musica',
+    /** Un audio de un chat (nota de voz de WhatsApp...): icono de la app y solo reproducir/pausa. */
+    AUDIO: 'audio',
 });
 
 /** Orden por defecto si el usuario no eligió ninguna (la primera disponible va en la cápsula). */
-export const ORDEN_ACTIVIDADES = Object.freeze([ACTIVIDADES.TEMPORIZADOR, ACTIVIDADES.MUSICA]);
+export const ORDEN_ACTIVIDADES = Object.freeze([ACTIVIDADES.AUDIO, ACTIVIDADES.TEMPORIZADOR, ACTIVIDADES.MUSICA]);
 
 /**
  * Orden al deslizar sobre la cápsula (derecha → izquierda avanza):
  * hora → música → temporizador. Solo cuentan las que estén activas (la hora siempre).
  */
-export const VISTAS_COMPACTAS = Object.freeze([ACTIVIDADES.HORA, ACTIVIDADES.MUSICA, ACTIVIDADES.TEMPORIZADOR]);
+export const VISTAS_COMPACTAS = Object.freeze([
+    ACTIVIDADES.HORA, ACTIVIDADES.MUSICA, ACTIVIDADES.AUDIO, ACTIVIDADES.TEMPORIZADOR,
+]);
 
 /**
  * Tipos de alerta temporal que puede recibir el controlador.
@@ -64,6 +85,12 @@ export const TIPOS_ALERTA = Object.freeze({
     PORTAPAPELES: 'portapapeles',
     /** Se activó o desactivó "No molestar" o el modo avión. */
     MODO: 'modo',
+    /** Captura de pantalla hecha (con miniatura). */
+    CAPTURA: 'captura',
+    /** Terminó una grabación de pantalla (guardada o con error, según GNOME). */
+    GRABACION: 'grabacion',
+    /** Está sonando una llamada (WhatsApp, Meet, Telegram...). */
+    LLAMADA: 'llamada',
 });
 
 /**
@@ -80,17 +107,36 @@ export const MODOS = Object.freeze({
  * La multimedia no es una alerta: es el estado base cuando hay reproducción.
  */
 export const PRIORIDADES = Object.freeze({
+    // Una llamada sonando va por delante de todo: hay que contestar ya.
+    [TIPOS_ALERTA.LLAMADA]: 6,
     // Lo que el usuario acaba de hacer (subir volumen, copiar) va primero: es respuesta inmediata.
     [TIPOS_ALERTA.INDICADOR]: 5,
     [TIPOS_ALERTA.TEMPORIZADOR]: 4,
     [TIPOS_ALERTA.PORTAPAPELES]: 4,
     [TIPOS_ALERTA.MODO]: 4,
+    [TIPOS_ALERTA.CAPTURA]: 4,
+    [TIPOS_ALERTA.GRABACION]: 4,
     [TIPOS_ALERTA.NOTIFICACION]: 3,
     [TIPOS_ALERTA.BLUETOOTH]: 2,
     [TIPOS_ALERTA.ENERGIA]: 2,
 });
 
 // ───────────── Tiempos de alertas ─────────────
+
+/**
+ * Una llamada sonando se ve mientras su aviso exista (la app lo quita al contestar,
+ * rechazar o colgar quien llama). Esto es solo el máximo, por si la app no lo quita.
+ */
+export const TIEMPO_ALERTA_LLAMADA_MS = 45000;
+
+/**
+ * Una llamada que suena con su aviso oculto queda en el círculo hasta que la app quita
+ * el aviso. Esto es solo el máximo, por si la app no lo quita nunca.
+ */
+export const TIEMPO_MAXIMO_LLAMADA_SONANDO_MS = 90000;
+
+/** Notificaciones críticas (batería agotándose...): más tiempo que las normales. */
+export const TIEMPO_ALERTA_CRITICA_MS = 10000;
 
 /** Tiempo en pantalla de una alerta Bluetooth. */
 export const TIEMPO_ALERTA_BLUETOOTH_MS = 3500;
@@ -117,6 +163,16 @@ export const TIEMPO_ALERTA_PORTAPAPELES_MS = 1600;
 
 /** Tiempo en pantalla del aviso de "No molestar" / modo avión. */
 export const TIEMPO_ALERTA_MODO_MS = 2200;
+
+/** Tiempo en pantalla del aviso de captura (con miniatura) y del de grabación terminada. */
+export const TIEMPO_ALERTA_CAPTURA_MS = 3500;
+export const TIEMPO_ALERTA_GRABACION_MS = 4500;
+
+/**
+ * Icono de la fuente de notificaciones de "Captura de pantalla" de GNOME
+ * (ui/screenshot.js). Identifica sus avisos sin depender del idioma.
+ */
+export const ICONO_FUENTE_CAPTURAS = 'screenshooter-symbolic';
 
 /** Tiempo en pantalla de "Tiempo cumplido" (si no se descarta antes). */
 export const TIEMPO_ALERTA_TEMPORIZADOR_MS = 20000;
@@ -152,7 +208,35 @@ export const ESTADOS_TEMPORIZADOR = Object.freeze({
 });
 
 /** Duraciones rápidas (minutos) que ofrece la página del temporizador. */
-export const PRESETS_TEMPORIZADOR_MIN = Object.freeze([1, 3, 5, 10, 15, 25, 30, 60]);
+export const PRESETS_TEMPORIZADOR_MIN = Object.freeze([1, 5, 15, 30]);
+
+// ───────────── Rueda selectora (temporizador, estilo iPhone) ─────────────
+
+/** Alto de cada fila de la rueda, en el centro (donde no hay curvatura). */
+export const ALTO_FILA_RUEDA_PX = 30;
+
+/** Ángulo (radianes) entre filas del cilindro: más ángulo = más curvatura. */
+export const ANGULO_FILA_RUEDA = 0.36;
+
+/** Alto visible de la rueda (unas 5 filas) y ancho de cada columna. */
+export const ALTO_RUEDA_PX = 132;
+export const ANCHO_RUEDA_PX = 48;
+
+/** Inercia al soltar un arrastre: cuánto "sigue" la rueda según la velocidad (ms). */
+export const INERCIA_RUEDA_MS = 220;
+
+/**
+ * Filas que avanza la rueda por cada unidad de desplazamiento suave del touchpad.
+ * Una unidad ≈ 10 px de dedos y una fila mide 30 px: 0,33 = los números siguen a los dedos 1:1.
+ */
+export const FILAS_POR_UNIDAD_SCROLL = 0.33;
+
+/** Sin más desplazamiento durante este tiempo, la rueda se asienta en el número más cercano. */
+export const ESPERA_ASENTAR_RUEDA_MS = 140;
+
+/** Duración del asentado (y mínimo del giro con inercia). */
+export const DURACION_ASENTAR_RUEDA_MS = 260;
+export const DURACION_MAXIMA_GIRO_RUEDA_MS = 650;
 
 /** Sonido (del tema de sonidos del sistema) al terminar el temporizador. */
 export const SONIDO_TEMPORIZADOR = 'alarm-clock-elapsed';
@@ -195,8 +279,36 @@ export const INTENTOS_AAP = 3;
 
 // ───────────── Interacción con el puntero ─────────────
 
-/** Píxeles que hay que arrastrar la cápsula (ratón presionado) para cambiar de vista. */
+// Asomarse a la vista de al lado: arrastrar la cápsula con el ratón presionado.
+// La vista de al lado crece siguiendo al puntero y la actual se encoge hasta un
+// círculo; el cambio solo se confirma al soltar (ver LOGICA_Y_FLUJO, 3.1).
+
+/** Con el ajuste "Cambiar al instante": píxeles que hay que arrastrar la cápsula para cambiar de vista. */
 export const UMBRAL_ARRASTRE_VISTA_PX = 28;
+
+/** Píxeles de arrastre antes de empezar a asomarse (evita moverla con un clic tembloroso). */
+export const UMBRAL_INICIO_ASOMO_PX = 4;
+
+/** Píxeles de arrastre para asomarse del todo (progreso 1: la vista de al lado a tamaño completo). */
+export const DISTANCIA_ASOMO_PX = 120;
+
+/** Progreso a partir del cual, al soltar, se confirma el cambio de vista. */
+export const UMBRAL_CONFIRMAR_ASOMO = 0.5;
+
+/** Con un gesto rápido (lanzar) basta con este progreso para confirmar. */
+export const PROGRESO_MINIMO_LANZAR_ASOMO = 0.12;
+
+/** Más allá del final, la vista de al lado solo crece este extra (como una goma). */
+export const EXCESO_MAXIMO_ASOMO = 0.12;
+
+/** Opacidad que conserva la vista actual al quedar convertida en círculo. */
+export const OPACIDAD_ACTUAL_ASOMO = 0.35;
+
+/** Escala de la hora o la cuenta atrás al quedar dentro del círculo (para que quepa). */
+export const ESCALA_ACTUAL_ASOMO = 0.5;
+
+/** Al confirmar: tiempo en que el círculo de la vista anterior desaparece. */
+export const DURACION_SALIDA_ASOMO_MS = 220;
 
 /** Tiempo con el puntero encima de la cápsula antes de abrir la tarjeta (si el ajuste "abrir-con-puntero" está activo). */
 export const RETARDO_APERTURA_HOVER_MS = 350;
@@ -243,7 +355,39 @@ export const RESORTES = Object.freeze({
     REBOTE: {respuesta: 0.34, amortiguacion: 0.52},
     /** Cambios de tamaño de la cápsula del panel. */
     CAPSULA: {respuesta: 0.42, amortiguacion: 0.72},
+    /** Cambio de actividad: la cápsula renace desde el círculo, con un rebote marcado. */
+    FLORECER: {respuesta: 0.46, amortiguacion: 0.60},
 });
+
+// ───────────── Cambio de actividad en la cápsula (contraer → círculo → florecer) ─────────────
+
+/** Fase 1: la cápsula se cierra hasta un círculo. */
+export const DURACION_CONTRAER_CAPSULA_MS = 170;
+
+/**
+ * El contenido que se va desaparece antes de que la forma se estreche de verdad
+ * (si no, el texto se aprieta y se ve "…").
+ */
+export const DURACION_SALIDA_CONTENIDO_MS = 110;
+
+/** Escala a la que se encoge el contenido que se va y desde la que nace el nuevo. */
+export const ESCALA_SALIDA_CONTENIDO = 0.55;
+export const ESCALA_ENTRADA_CONTENIDO = 0.7;
+
+/**
+ * Fase 2: el contenido nuevo espera a que la forma tenga sitio para él. Con el resorte
+ * FLORECER, hacia el 32 % del tiempo la forma ya supera el 90 % de su ancho (luego se
+ * pasa y rebota): el contenido entra ahí, casi transparente, y nunca se ve cortado.
+ */
+export const FRACCION_RETRASO_FLORECER = 0.32;
+export const DURACION_ENTRADA_CONTENIDO_MS = 220;
+
+/** Al deslizar, el contenido nuevo entra un poco desde ese lado. */
+export const DESPLAZAMIENTO_ENTRADA_PX = 14;
+
+/** El círculo (actividad secundaria): se encoge hasta esta escala, cambia y vuelve a crecer. */
+export const ESCALA_CAMBIO_BURBUJA = 0.25;
+export const DURACION_CAMBIO_BURBUJA_MS = 140;
 
 /**
  * Desenfoque del contenido al entrar/salir. Desactivado: Shell.BlurEffect dibuja el
@@ -292,3 +436,14 @@ export const MARGEN_PANTALLA_PX = 8;
 
 /** Intervalo de refresco de la barra de progreso (solo con la tarjeta abierta y sonando). */
 export const INTERVALO_PROGRESO_MS = 1000;
+
+/**
+ * Al pasar de canción, los navegadores vacían los datos de la pista un momento
+ * mientras cargan la siguiente. Durante este tiempo la isla muestra un esqueleto
+ * en lugar de dar la música por terminada.
+ */
+export const TIEMPO_ESPERA_PISTA_MS = 6000;
+
+/** Latido del esqueleto de carga: duración de cada media oscilación y opacidad mínima (0–255). */
+export const DURACION_LATIDO_MS = 750;
+export const OPACIDAD_LATIDO = 90;

@@ -11,7 +11,13 @@
 
 import Clutter from 'gi://Clutter';
 
-import {DURACION_APARICION_MS, RESORTES, ESCALA_PULSACION} from '../constantes.js';
+import {
+    DURACION_APARICION_MS,
+    RESORTES,
+    ESCALA_PULSACION,
+    DURACION_LATIDO_MS,
+    OPACIDAD_LATIDO,
+} from '../constantes.js';
 import {animar, animarConResorte} from './movimiento.js';
 
 /**
@@ -123,4 +129,31 @@ export function agregarEfectoHover(actor, escala = 1.05) {
         const destino = actor.hover ? escala : 1;
         animarConResorte(actor, {scale_x: destino, scale_y: destino}, {resorte: RESORTES.REBOTE});
     });
+}
+
+/**
+ * Latido de carga (esqueleto): la opacidad baja y sube sin parar. Es una
+ * transición del compositor; quien la inicia debe detenerla con detenerLatido()
+ * en cuanto deje de verse (regla: nada de animaciones infinitas ocultas).
+ * @param {Clutter.Actor} actor
+ */
+export function latir(actor) {
+    actor.remove_transition('opacity');
+    actor.opacity = 255;
+    animar(actor, {
+        opacity: OPACIDAD_LATIDO,
+        duration: DURACION_LATIDO_MS,
+        mode: Clutter.AnimationMode.EASE_IN_OUT_SINE,
+        repeatCount: -1,
+        autoReverse: true,
+    });
+}
+
+/**
+ * Detiene el latido y deja el actor visible del todo.
+ * @param {Clutter.Actor} actor
+ */
+export function detenerLatido(actor) {
+    actor.remove_transition('opacity');
+    actor.opacity = 255;
 }

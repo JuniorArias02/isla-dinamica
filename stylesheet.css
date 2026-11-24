@@ -68,6 +68,26 @@
     max-width: 150px;
 }
 
+/* Asomo: al arrastrar la cápsula, la vista actual se encoge y la de al lado crece.
+   La ventana pone la forma; la previa de dentro es una cápsula sin fondo ni borde
+   (el borde lo pone la ventana, así las dos miden lo mismo que la cápsula real). */
+.isla-asomo-ventana {
+    background-color: #000000;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.40);
+}
+
+#panel .panel-button.isla-boton-panel:hover .isla-asomo-ventana {
+    border-color: rgba(255, 255, 255, 0.24);
+}
+
+.isla-pildora.isla-pildora-previa {
+    background-color: transparent;
+    border-width: 0;
+    box-shadow: none;
+}
+
 /* ═════════════════════ Burbuja (círculo) ═════════════════════ */
 
 .isla-burbuja {
@@ -134,6 +154,21 @@
 
 .isla-caratula-respaldo {
     color: #ffffff;
+}
+
+/* Audio de un chat: el logo de la app ocupa todo (sin el degradado de la nota) */
+.isla-caratula.con-icono-app {
+    background-gradient-direction: none;
+    background-color: transparent;
+}
+
+.isla-caratula-mini.con-icono-app .isla-caratula-respaldo,
+.isla-caratula-burbuja.con-icono-app .isla-caratula-respaldo {
+    icon-size: 20px;
+}
+
+.isla-caratula-grande.con-icono-app .isla-caratula-respaldo {
+    icon-size: 64px;
 }
 
 .isla-caratula-mini {
@@ -278,10 +313,6 @@
 }
 
 /* Cada página tiene su propio alto: la isla se adapta al deslizar */
-.isla-pagina-vacia {
-    min-height: 110px;
-}
-
 .isla-pagina-encabezado {
     color: rgba(255, 255, 255, 0.45);
     font-size: 9pt;
@@ -304,6 +335,28 @@
     background-color: #ffffff;
 }
 
+/* ───── Audio de un chat (nota de voz de WhatsApp) ───── */
+
+/* Cápsula: logo de la app + "Audio · 0:30" en verde + onda blanca */
+.isla-pildora-audio .isla-pildora-titulo {
+    color: #25d366;
+}
+
+.isla-pildora-audio .isla-onda-barra,
+.isla-pagina-audio .isla-onda-barra {
+    background-color: rgba(255, 255, 255, 0.85);
+}
+
+/* Página: un solo botón, grande y verde */
+.isla-pagina-audio .isla-boton-principal {
+    background-color: #25d366;
+    color: #ffffff;
+}
+
+.isla-pagina-audio .isla-boton-principal:hover {
+    background-color: #3be27a;
+}
+
 /* ───── Página de música ───── */
 
 .isla-pagina-musica {
@@ -312,6 +365,10 @@
 
 .isla-musica-cabecera {
     spacing: 14px;
+}
+
+.isla-musica-boton-caratula {
+    border-radius: 16px;
 }
 
 .isla-musica-boton-textos {
@@ -466,19 +523,139 @@
 
 /* ───── Página vacía ───── */
 
-.isla-pagina-vacia {
-    spacing: 10px;
+/* ═════════════════════ Esqueleto de carga (canción siguiente) ═════════════════════ */
+
+.isla-esqueleto {
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.22);
 }
 
-.isla-vacia-icono {
-    icon-size: 42px;
-    color: rgba(255, 255, 255, 0.30);
+.isla-esqueleto-segundo {
+    margin-top: 6px;
+    background-color: rgba(255, 255, 255, 0.14);
 }
 
-.isla-vacia-texto {
+.isla-caratula.cargando {
+    background-gradient-direction: none;
+    background-color: rgba(255, 255, 255, 0.16);
+}
+
+/* ═════════════════════ Página Calendario ═════════════════════ */
+
+.isla-pagina-calendario {
+    spacing: 14px;
+    min-height: 168px;
+}
+
+.isla-calendario-boton {
+    padding: 4px;
+    border-radius: 14px;
+}
+
+.isla-calendario-boton:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+.isla-calendario-mes {
+    width: 164px;
+    spacing: 4px;
+}
+
+.isla-calendario-nombre-mes {
+    color: #ff453a;
+    font-size: 8.5pt;
+    font-weight: 800;
+    padding: 0 0 2px 3px;
+}
+
+.isla-calendario-dia-semana {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 7.5pt;
+    font-weight: 800;
+    padding-bottom: 2px;
+}
+
+.isla-calendario-numero {
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+}
+
+.isla-calendario-numero-texto {
+    color: #ffffff;
+    font-size: 8.5pt;
+    font-weight: 600;
+    font-feature-settings: "tnum";
+}
+
+.isla-calendario-numero.fin-de-semana .isla-calendario-numero-texto {
     color: rgba(255, 255, 255, 0.50);
-    font-size: 11pt;
+}
+
+.isla-calendario-numero.hoy {
+    background-color: #ff453a;
+}
+
+.isla-calendario-numero.hoy .isla-calendario-numero-texto {
+    font-weight: 800;
+}
+
+.isla-calendario-punto {
+    width: 4px;
+    height: 4px;
+    border-radius: 2px;
+    margin-top: 1px;
+    background-color: rgba(255, 255, 255, 0.55);
+}
+
+.isla-calendario-eventos {
+    spacing: 6px;
+}
+
+.isla-calendario-encabezado-dia {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 7.5pt;
+    font-weight: 800;
+    padding-top: 2px;
+}
+
+.isla-calendario-evento {
+    spacing: 8px;
+}
+
+.isla-calendario-barra {
+    width: 3px;
+    border-radius: 2px;
+    background-color: #ff453a;
+}
+
+.isla-calendario-titulo {
+    color: #ffffff;
+    font-size: 10pt;
+    font-weight: 700;
+}
+
+.isla-calendario-hora {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 8.5pt;
+}
+
+.isla-calendario-mas {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 8.5pt;
     font-weight: bold;
+}
+
+.isla-calendario-vacio {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 10pt;
+    font-weight: 700;
+    padding-top: 22px;
+}
+
+.isla-calendario-vacio-detalle {
+    color: rgba(255, 255, 255, 0.50);
+    font-size: 8.5pt;
 }
 
 /* ═════════════════════ AirPods (protocolo AAP) ═════════════════════ */
@@ -872,6 +1049,262 @@
     opacity: 0.55;
 }
 
+/* ═════════════════════ Grabación y captura de pantalla ═════════════════════ */
+
+/* Cápsula: punto rojo que late + contador */
+.isla-pildora-grabacion {
+    min-width: 88px;
+    padding: 0 14px;
+}
+
+.isla-pildora-contenido-grabacion {
+    spacing: 7px;
+}
+
+.isla-grabacion-punto {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background-color: #ff453a;
+}
+
+.isla-pildora-grabacion-tiempo {
+    color: #ff453a;
+    font-size: 10pt;
+    font-weight: 800;
+    font-feature-settings: "tnum";
+}
+
+/* Página "Grabando la pantalla" */
+.isla-pagina-grabacion {
+    spacing: 16px;
+    padding: 6px 4px;
+    min-height: 96px;
+}
+
+.isla-grabacion-encabezado {
+    spacing: 8px;
+}
+
+.isla-grabacion-titulo {
+    color: #ff453a;
+    font-size: 10pt;
+    font-weight: 800;
+}
+
+.isla-grabacion-tiempo {
+    color: #ffffff;
+    font-size: 26pt;
+    font-weight: 800;
+    font-feature-settings: "tnum";
+    padding-top: 2px;
+}
+
+.isla-grabacion-pista {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 8.5pt;
+}
+
+.isla-grabacion-detener {
+    width: 60px;
+    height: 60px;
+    border-radius: 999px;
+    background-color: #ff453a;
+}
+
+.isla-grabacion-detener:hover {
+    background-color: #ff6961;
+}
+
+.isla-grabacion-detener-icono {
+    icon-size: 22px;
+    color: #ffffff;
+}
+
+/* Aviso de captura (con miniatura) */
+.isla-alerta-captura {
+    padding: 10px 18px 10px 12px;
+}
+
+.isla-captura-miniatura {
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.isla-captura-miniatura.sin-imagen {
+    border-radius: 999px;
+    border-width: 0;
+    background-color: rgba(255, 255, 255, 0.16);
+}
+
+.isla-captura-respaldo {
+    icon-size: 20px;
+    color: #ffffff;
+}
+
+.isla-captura-detalle {
+    color: rgba(255, 255, 255, 0.60);
+    font-size: 9pt;
+}
+
+/* Aviso de grabación terminada */
+.isla-alerta-grabacion {
+    padding: 10px 18px 10px 10px;
+}
+
+.isla-grabacion-alerta-caja {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background-color: rgba(255, 69, 58, 0.20);
+}
+
+.isla-grabacion-alerta-icono {
+    icon-size: 18px;
+    color: #ff453a;
+}
+
+.isla-grabacion-alerta-detalle {
+    color: rgba(255, 255, 255, 0.60);
+    font-size: 9pt;
+}
+
+/* ═════════════════════ Llamadas y videollamadas ═════════════════════ */
+
+/* Cápsula: teléfono verde + tiempo de llamada */
+.isla-pildora-llamada {
+    min-width: 88px;
+    padding: 0 14px;
+}
+
+.isla-pildora-contenido-llamada {
+    spacing: 7px;
+}
+
+.isla-pildora-llamada-icono {
+    icon-size: 13px;
+    color: #30d158;
+}
+
+.isla-pildora-llamada-tiempo {
+    color: #30d158;
+    font-size: 10pt;
+    font-weight: 800;
+    font-feature-settings: "tnum";
+}
+
+/* Página "En llamada" */
+.isla-pagina-llamada {
+    spacing: 16px;
+    padding: 6px 4px;
+    min-height: 96px;
+}
+
+.isla-llamada-encabezado {
+    spacing: 8px;
+}
+
+.isla-llamada-encabezado-icono {
+    icon-size: 14px;
+    color: #30d158;
+}
+
+.isla-llamada-nombre {
+    color: #30d158;
+    font-size: 10pt;
+    font-weight: 800;
+}
+
+.isla-llamada-tiempo {
+    color: #ffffff;
+    font-size: 26pt;
+    font-weight: 800;
+    font-feature-settings: "tnum";
+    padding-top: 2px;
+}
+
+.isla-llamada-estado {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 8.5pt;
+}
+
+.isla-llamada-botones {
+    spacing: 12px;
+}
+
+.isla-llamada-boton {
+    width: 52px;
+    height: 52px;
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.16);
+}
+
+.isla-llamada-boton:hover {
+    background-color: rgba(255, 255, 255, 0.26);
+}
+
+.isla-llamada-boton-silencio.activo {
+    background-color: #ffffff;
+}
+
+.isla-llamada-boton-silencio.activo .isla-llamada-boton-icono {
+    color: #000000;
+}
+
+.isla-llamada-boton-mostrar {
+    background-color: #30d158;
+}
+
+.isla-llamada-boton-mostrar:hover {
+    background-color: #4cd964;
+}
+
+.isla-llamada-boton-icono {
+    icon-size: 20px;
+    color: #ffffff;
+}
+
+/* Alerta de llamada entrante: rechazar (rojo) y contestar (verde) */
+.isla-alerta-llamada {
+    padding: 10px 12px 10px 12px;
+}
+
+.isla-llamada-alerta-detalle {
+    color: rgba(255, 255, 255, 0.60);
+    font-size: 9pt;
+}
+
+.isla-llamada-alerta-botones {
+    spacing: 10px;
+}
+
+.isla-llamada-alerta-boton {
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+}
+
+.isla-llamada-rechazar {
+    background-color: #ff453a;
+}
+
+.isla-llamada-rechazar:hover {
+    background-color: #ff6961;
+}
+
+.isla-llamada-contestar {
+    background-color: #30d158;
+}
+
+.isla-llamada-contestar:hover {
+    background-color: #4cd964;
+}
+
+.isla-llamada-alerta-boton-icono {
+    icon-size: 20px;
+    color: #ffffff;
+}
+
 /* Alerta "¡Tiempo cumplido!" */
 .isla-temporizador-icono-caja {
     width: 46px;
@@ -905,8 +1338,61 @@
     spacing: 4px;
 }
 
-.isla-temporizador-presets {
-    spacing: 8px;
+/* Elegir duración: ruedas (estilo iPhone) + Iniciar + atajos */
+.isla-temporizador-elegir {
+    spacing: 10px;
+}
+
+.isla-temporizador-fila-selector {
+    spacing: 18px;
+}
+
+.isla-selector-banda {
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.10);
+}
+
+.isla-selector-ruedas {
+    spacing: 2px;
+    padding: 0 10px;
+}
+
+.isla-rueda-numero {
+    color: #ffffff;
+    font-size: 17pt;
+    font-weight: 700;
+    font-feature-settings: "tnum";
+}
+
+.isla-selector-unidad {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 9.5pt;
+    font-weight: 800;
+    min-width: 28px;
+}
+
+.isla-temporizador-iniciar {
+    width: 58px;
+    height: 58px;
+    border-radius: 999px;
+    background-color: #ff9f0a;
+}
+
+.isla-temporizador-iniciar:hover {
+    background-color: #ffb340;
+}
+
+.isla-temporizador-iniciar.deshabilitado {
+    background-color: rgba(255, 159, 10, 0.25);
+}
+
+.isla-temporizador-iniciar-icono {
+    icon-size: 24px;
+    color: #000000;
+}
+
+.isla-temporizador-iniciar.deshabilitado .isla-temporizador-iniciar-icono {
+    color: rgba(0, 0, 0, 0.45);
 }
 
 .isla-temporizador-fila-presets {
@@ -915,10 +1401,10 @@
 
 .isla-temporizador-preset {
     border-radius: 14px;
-    padding: 10px 4px;
+    padding: 7px 4px;
     background-color: rgba(255, 159, 10, 0.16);
     color: #ff9f0a;
-    font-size: 10pt;
+    font-size: 9.5pt;
     font-weight: 800;
 }
 
@@ -1002,6 +1488,17 @@
 
 .isla-caratula-burbuja .isla-caratula-respaldo {
     icon-size: 11px;
+}
+
+/* Llamada que suena con su aviso oculto: círculo verde con el teléfono latiendo */
+.isla-burbuja.llamada {
+    background-color: #30d158;
+    border-color: rgba(255, 255, 255, 0.20);
+}
+
+.isla-burbuja-llamada-icono {
+    icon-size: 12px;
+    color: #ffffff;
 }
 
 .isla-burbuja-temporizador-icono {

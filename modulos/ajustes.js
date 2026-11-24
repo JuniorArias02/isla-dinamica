@@ -10,9 +10,11 @@
  * instante sin reiniciar nada. Lo que necesita reaccionar enseguida (ej. volver a
  * mostrar el reloj de Ubuntu) se suscribe con alCambiarAjuste().
  *
- * Como registro.js, lo pueden importar todas las capas. Solo depende de Gio,
+ * Como registro.js, lo pueden importar todas las capas. Solo depende de Gio y GLib,
  * así que también sirve en prefs.js (que corre en otro proceso, sin Shell).
  */
+
+import GLib from 'gi://GLib';
 
 /**
  * Claves de las opciones (deben coincidir con el esquema).
@@ -25,12 +27,29 @@ export const AJUSTES = Object.freeze({
     ABRIR_CON_PUNTERO: 'abrir-con-puntero',
     TIEMPO_CIERRE_MS: 'tiempo-cierre-ms',
     OCULTAR_RELOJ_GNOME: 'ocultar-reloj-gnome',
+    ARRASTRE_CAPSULA: 'arrastre-capsula',
     FORZAR_ANIMACIONES: 'forzar-animaciones',
     MOSTRAR_VOLUMEN_BRILLO: 'mostrar-volumen-brillo',
     AVISAR_CARGADOR: 'avisar-cargador',
     AVISAR_COPIADO: 'avisar-copiado',
     AVISAR_MODOS: 'avisar-modos',
+    AVISAR_CAPTURAS: 'avisar-capturas',
+    AVISAR_LLAMADAS: 'avisar-llamadas',
+    OCULTAR_INDICADOR_GRABACION: 'ocultar-indicador-grabacion',
     MOSTRAR_PRIVACIDAD: 'mostrar-privacidad',
+    /** Estado, no opción: la última duración usada en el temporizador. */
+    ULTIMA_DURACION_TEMPORIZADOR_S: 'ultima-duracion-temporizador-s',
+});
+
+/**
+ * Valores de AJUSTES.ARRASTRE_CAPSULA: qué pasa al arrastrar la cápsula a los lados.
+ * @enum {string}
+ */
+export const ARRASTRE_CAPSULA = Object.freeze({
+    /** La vista de al lado se asoma siguiendo al puntero; se queda al soltar pasada la mitad. */
+    ASOMAR: 'asomar',
+    /** La cápsula se estira un poco y, al soltar, cambia de vista con la transición por el círculo. */
+    CAMBIAR: 'cambiar',
 });
 
 /**
@@ -39,17 +58,22 @@ export const AJUSTES = Object.freeze({
  */
 const POR_DEFECTO = Object.freeze({
     [AJUSTES.NOTIFICACIONES_PRIVADAS]: false,
-    [AJUSTES.NOTIFICAR_EN_NO_MOLESTAR]: true,
+    [AJUSTES.NOTIFICAR_EN_NO_MOLESTAR]: false,
     [AJUSTES.DURACION_NOTIFICACIONES_MS]: 4500,
     [AJUSTES.ABRIR_CON_PUNTERO]: false,
     [AJUSTES.TIEMPO_CIERRE_MS]: 3000,
     [AJUSTES.OCULTAR_RELOJ_GNOME]: true,
+    [AJUSTES.ARRASTRE_CAPSULA]: 'asomar',
     [AJUSTES.FORZAR_ANIMACIONES]: true,
     [AJUSTES.MOSTRAR_VOLUMEN_BRILLO]: true,
     [AJUSTES.AVISAR_CARGADOR]: true,
     [AJUSTES.AVISAR_COPIADO]: true,
     [AJUSTES.AVISAR_MODOS]: true,
+    [AJUSTES.AVISAR_CAPTURAS]: true,
+    [AJUSTES.AVISAR_LLAMADAS]: true,
+    [AJUSTES.OCULTAR_INDICADOR_GRABACION]: true,
     [AJUSTES.MOSTRAR_PRIVACIDAD]: true,
+    [AJUSTES.ULTIMA_DURACION_TEMPORIZADOR_S]: 300,
 });
 
 /** @type {Gio.Settings|null} */
@@ -71,7 +95,7 @@ export function liberarAjustes() {
 /**
  * Valor actual de una opción.
  * @param {string} clave - Una de AJUSTES.
- * @returns {boolean|number}
+ * @returns {boolean|number|string}
  */
 export function ajuste(clave) {
     if (!ajustes)
@@ -104,4 +128,17 @@ export function alCambiarCualquierAjuste(alCambiar, dueno) {
  */
 export function dejarDeEscucharAjustes(dueno) {
     ajustes?.disconnectObject(dueno);
+}
+
+/**
+ * Guarda un valor (solo para estado que la isla recuerda, ej. la última duración
+ * del temporizador; las opciones las cambia el usuario en la ventana de ajustes).
+ * @param {string} clave - Una de AJUSTES.
+ * @param {boolean|number} valor
+ */
+export function guardarAjuste(clave, valor) {
+    if (!ajustes)
+        return;
+    const tipo = ajustes.settings_schema.get_key(clave).get_value_type().dup_string();
+    ajustes.set_value(clave, new GLib.Variant(tipo, valor));
 }

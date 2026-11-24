@@ -53,6 +53,8 @@ servicios/  ──datos──▶  controlador.js  ──vista──▶  ui/
 | Una pieza visual reutilizable | `ui/componentes/` (sin lógica de negocio) |
 | Una animación que se repite | `ui/animaciones.js` |
 | Un gesto del usuario | `ui/interaccion.js` |
+| Un componente que necesita el arrastre o desplazamiento **vertical** para sí (ej. una rueda) | Clase CSS `isla-captura-vertical` (la isla no se cerrará al arrastrar sobre él) y devolver `EVENT_STOP` en su `scroll-event` vertical |
+| Un botón propio dentro de una **alerta** (ej. contestar una llamada) | Clase CSS `isla-captura-clic`: el clic en él no cuenta además como toque en la alerta |
 | Un tiempo, tamaño o umbral | `constantes.js`. **Nunca** un número suelto en el código |
 | Una **opción que el usuario pueda cambiar** | 1) `<key>` en `schemas/…gschema.xml` · 2) clave y valor por defecto en `ajustes.js` (deben coincidir) · 3) fila en `prefs.js` · 4) leerla con `ajuste(AJUSTES.X)` en el momento de usarla · 5) `glib-compile-schemas schemas/` |
 | Un color, radio o espaciado | `stylesheet.css`. **Nunca** estilos en JS, salvo valores dinámicos (por ejemplo, la portada) |
@@ -154,6 +156,11 @@ import {IslaUI} from './modulos/ui/isla.js';
 
 * Clases visuales con `GObject.registerClass` e `_init(...)`. Limpieza con `this.connect('destroy', ...)`, sin sobrescribir `vfunc_destroy`.
 * En GNOME 50 los clics se detectan con `Clutter.ClickGesture` y los arrastres con `Clutter.PanGesture` (no con `button-press-event`).
+  - Señales de `PanGesture`: `recognize` (empieza, tras superar el umbral), `pan-update`, `end`, `cancel`. **No existe `pan-begin`**: conectarla hace fallar `enable()`.
+  - Para vetar un gesto según dónde empieza: `may-recognize` (devuelve `false` para impedirlo).
+  - Un arrastre que puede salir del actor necesita `global.stage.grab(actor)` en `recognize` y `dismiss()` en `end`/`cancel`.
+  - Un `PanelMenu.Button` creado sin menú sigue registrado en `Main.panel.menuManager` con un menú vacío. Ese gestor abre el menú del botón vecino si el puntero pasa por encima mientras se arrastra, y el arrastre se cancela. La isla se quita de ese gestor al montarse.
+* No usar `fuente.iconName` de una fuente de notificaciones: en GNOME 50 siempre devuelve `null` (consulta una propiedad que no existe). Leer `fuente.icon` (`Gio.ThemedIcon`) y sus `get_names()`.
 * `St.BoxLayout` vertical: `orientation: Clutter.Orientation.VERTICAL` (la propiedad `vertical` está obsoleta).
 * No usar opciones de la API de GNOME sin comprobarlas en GNOME 50. Por ejemplo, `addTopChrome` solo acepta `trackFullscreen` y `affectsStruts`; cualquier otra opción hace fallar `enable()`.
 

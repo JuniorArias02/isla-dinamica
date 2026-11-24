@@ -10,13 +10,25 @@
  *   1. El último que empezó a sonar.
  *   2. Si ninguno suena, el último que tuvo actividad (queda en pausa).
  *
+ * Al pasar de canción, Brave vacía los datos de la pista un momento. Mientras el
+ * reproductor siga abierto, se entrega la pista con `cargando: true` (hasta
+ * TIEMPO_ESPERA_PISTA_MS) en lugar de null: la isla muestra un esqueleto y no
+ * pierde la página de música.
+ *
  * También expone los comandos PlayPause / Next / Previous / Raise.
+ *
+ * Cada pista dice si es música o un audio de un chat (`tipo`, ver reconocedorAudio):
+ * un audio de WhatsApp Web llega de Brave con la web como título y sin artista.
+ * Son dos cosas distintas para la isla: la música va por `alCambiarPista` (reproductor
+ * `activo`) y el audio de chat por `alCambiarAudio` (reproductor `activoAudio`).
  */
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
+import {TIEMPO_ESPERA_PISTA_MS, TIPOS_PISTA} from '../constantes.js';
 import {registrarInfo, registrarAviso, registrarError, protegido} from '../registro.js';
+import {clasificarAudio} from './reconocedorAudio.js';
 
 const PREFIJO_MPRIS = 'org.mpris.MediaPlayer2';
 const RUTA_MPRIS = '/org/mpris/MediaPlayer2';
@@ -126,14 +138,21 @@ class Reproductor {
     obtenerPista() {
         const metadatos = this._leerMetadatos();
         const artistas = metadatos['xesam:artist'];
-        const urlCaratula = metadatos['mpris:artUrl'] ?? '';
+        const titulo = metadatos['xesam:title'] || 'Sin título';
+        const artista = Array.isArray(artistas) ? artistas.filter(Boolean).join(', ') : (artistas ?? '');
+        // Un audio de chat trae como imagen el logo del navegador: no se usa (la isla pone el de la app).
+        const {tipo, app: appAudio} = clasificarAudio({titulo, artista});
+        const urlCaratula = appAudio ? '' : metadatos['mpris:artUrl'] ?? '';
 
         return {
             nombreBus: this.nombreBus,
             aplicacion: this._raiz?.Identity || this._nombreCorto(),
             entradaEscritorio: this._raiz?.DesktopEntry || null,
-            titulo: metadatos['xesam:title'] || 'Sin título',
-            artista: Array.isArray(artistas) ? artistas.filter(Boolean).join(', ') : (artistas ?? ''),
+            titulo,
+            artista,
+            // Música o audio de un chat (TIPOS_PISTA), y de qué chat: {id, nombre, entradasEscritorio}.
+            tipo,
+            appAudio,
             album: metadatos['xesam:album'] ?? '',
             // Solo se usan carátulas locales: las remotas (http) requerirían descargas dentro del Shell.
             urlCaratula: urlCaratula.startsWith('file://') ? urlCaratula : null,
@@ -142,7 +161,8 @@ class Reproductor {
             puedeSiguiente: this._proxy?.CanGoNext ?? false,
             puedeAnterior: this._proxy?.CanGoPrevious ?? false,
             puedeAlternar: (this._proxy?.CanPlay || this._proxy?.CanPause) ?? false,
-            puedeMostrar: this._raiz?.CanRaise ?? false,
+            // Siempre: si no acepta Raise (Brave), la isla busca su ventana por el proceso.
+            puedeMostrar: true,
             // Saltar a un punto de la canción (clic en la barra de progreso).
             puedeBuscar: Boolean(this._proxy?.CanSeek && metadatos['mpris:trackid'] && metadatos['mpris:length']),
         };
@@ -191,8 +211,32 @@ class Reproductor {
     }
 
     /** Método org.mpris.MediaPlayer2.Raise (trae la ventana del reproductor al frente) */
+    /** @returns {boolean} true si el reproductor acepta que lo traigan al frente (Raise). */
+    get puedeTraer() {
+        return Boolean(this._raiz?.CanRaise);
+    }
+
+    /** Trae al frente la ventana del reproductor (solo si puedeTraer). */
     mostrarVentana() {
         this._raiz?.RaiseAsync().catch(e => this._registrarError('Raise', e));
+    }
+
+    /**
+     * Proceso dueño del reproductor en el bus (para buscar su ventana si no acepta Raise).
+     * @returns {Promise<number|null>}
+     */
+    async obtenerPid() {
+        try {
+            // Servicio org.freedesktop.DBus · método GetConnectionUnixProcessID
+            const respuesta = await Gio.DBus.session.call(
+                'org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
+                'GetConnectionUnixProcessID', new GLib.Variant('(s)', [this.nombreBus]),
+                new GLib.VariantType('(u)'), Gio.DBusCallFlags.NONE, -1, this._cancelable);
+            return respuesta.deepUnpack()[0];
+        } catch (error) {
+            this._registrarError('GetConnectionUnixProcessID', error);
+            return null;
+        }
     }
 
     destruir() {
@@ -222,10 +266,14 @@ class Reproductor {
 
 export class MonitorMultimedia {
     /**
-     * @param {Function} alCambiarPista - Recibe la pista activa normalizada, o null.
+     * @param {Function} alCambiarPista - Recibe la música activa normalizada, o null.
+     * @param {Function} [alCambiarAudio] - Recibe el audio de chat que suena (nota de voz), o null.
      */
-    constructor(alCambiarPista) {
+    constructor(alCambiarPista, alCambiarAudio = null) {
         this._alCambiarPista = alCambiarPista;
+        this._alCambiarAudio = alCambiarAudio;
+        /** Reproductor del audio de chat (en Brave suele ser el mismo que el de la música). */
+        this._activoAudio = null;
         this._cancelable = new Gio.Cancellable();
         this._idNombres = 0;
         this._idActualizacion = 0;
@@ -233,6 +281,11 @@ export class MonitorMultimedia {
         /** @type {Map<string, Reproductor>} */
         this._reproductores = new Map();
         this._activo = null;
+
+        /** Última pista con datos (base del estado "cargando"). */
+        this._ultimaPista = null;
+        /** Temporizador de una sola vez: espera a la canción siguiente (TIEMPO_ESPERA_PISTA_MS). */
+        this._idEspera = 0;
     }
 
     /** Lista los reproductores existentes y escucha la aparición de nuevos. */
@@ -263,9 +316,14 @@ export class MonitorMultimedia {
         }
     }
 
-    /** @returns {Reproductor|null} Reproductor que se muestra en la isla. */
+    /** @returns {Reproductor|null} Reproductor de la música que se muestra en la isla. */
     get activo() {
         return this._activo;
+    }
+
+    /** @returns {Reproductor|null} Reproductor del audio de chat (nota de voz), si suena uno. */
+    get activoAudio() {
+        return this._activoAudio;
     }
 
     destruir() {
@@ -276,11 +334,14 @@ export class MonitorMultimedia {
         if (this._idActualizacion)
             GLib.source_remove(this._idActualizacion);
         this._idActualizacion = 0;
+        this._cancelarEspera();
         for (const reproductor of this._reproductores.values())
             reproductor.destruir();
         this._reproductores.clear();
         this._activo = null;
+        this._activoAudio = null;
         this._alCambiarPista = null;
+        this._alCambiarAudio = null;
     }
 
     // ───────────────────────── Métodos privados ─────────────────────────
@@ -337,16 +398,95 @@ export class MonitorMultimedia {
     }
 
     _actualizarActivo() {
-        const candidatos = [...this._reproductores.values()].filter(r => r.tienePista);
-        const porActividad = (a, b) => b.ultimaActividad - a.ultimaActividad;
+        const conPista = [...this._reproductores.values()]
+            .filter(r => r.tienePista)
+            .map(reproductor => ({reproductor, pista: reproductor.obtenerPista()}));
+        const esAudio = ({pista}) => pista.tipo === TIPOS_PISTA.AUDIO;
 
-        const sonando = candidatos.filter(r => r.reproduciendo).sort(porActividad);
-        const enPausa = candidatos.filter(r => !r.reproduciendo).sort(porActividad);
+        this._actualizarAudio(this._elegir(conPista.filter(esAudio)));
 
-        this._activo = sonando[0] ?? enPausa[0] ?? null;
+        const elegidoMusica = this._elegir(conPista.filter(candidato => !esAudio(candidato)));
+        const elegido = elegidoMusica?.reproductor ?? null;
 
+        // Cambio de canción: el reproductor activo sigue existiendo pero vació sus datos
+        // mientras carga la siguiente. No es el fin de la música: se avisa "cargando".
+        // (Si en lugar de vaciarlos pasó a un audio de chat, la música sí terminó.)
+        const anterior = this._activo;
+        const sigueAbierto = anterior && this._reproductores.get(anterior.nombreBus) === anterior;
+        if (!elegido && sigueAbierto && !anterior.tienePista && this._ultimaPista) {
+            this._esperarSiguientePista();
+            return;
+        }
+
+        this._cancelarEspera();
+        this._activo = elegido;
+        this._ultimaPista = elegidoMusica?.pista ?? null;
+        this._emitir(this._ultimaPista);
+    }
+
+    /**
+     * El que está sonando; si ninguno suena, el último con actividad (queda en pausa).
+     * @param {Array<{reproductor: Reproductor, pista: object}>} candidatos
+     * @returns {{reproductor: Reproductor, pista: object}|null}
+     */
+    _elegir(candidatos) {
+        const porActividad = (a, b) => b.reproductor.ultimaActividad - a.reproductor.ultimaActividad;
+        const sonando = candidatos.filter(c => c.reproductor.reproduciendo).sort(porActividad);
+        const enPausa = candidatos.filter(c => !c.reproductor.reproduciendo).sort(porActividad);
+        return sonando[0] ?? enPausa[0] ?? null;
+    }
+
+    /**
+     * Audio de chat: no tiene espera de "cargando" (al terminar, se quita).
+     * @param {{reproductor: Reproductor, pista: object}|null} elegido
+     */
+    _actualizarAudio(elegido) {
+        this._activoAudio = elegido?.reproductor ?? null;
         try {
-            this._alCambiarPista?.(this._activo?.obtenerPista() ?? null);
+            this._alCambiarAudio?.(elegido?.pista ?? null);
+        } catch (error) {
+            registrarError('multimedia: procesar audio', error);
+        }
+    }
+
+    /**
+     * Emite la pista "cargando" (los datos de la app y los controles siguen; título y
+     * portada no) y programa el final de la espera. Si la canción nueva no llega a
+     * tiempo, la música se da por terminada.
+     */
+    _esperarSiguientePista() {
+        if (!this._idEspera) {
+            this._idEspera = GLib.timeout_add(GLib.PRIORITY_DEFAULT, TIEMPO_ESPERA_PISTA_MS, () => {
+                this._idEspera = 0;
+                protegido('multimedia: fin de la espera de la siguiente pista', () => {
+                    this._activo = null;
+                    this._ultimaPista = null;
+                    this._actualizarActivo();
+                })();
+                return GLib.SOURCE_REMOVE;
+            });
+        }
+        this._emitir({
+            ...this._ultimaPista,
+            cargando: true,
+            // Sigue "sonando": la cápsula no debe saltar a la hora durante el cambio.
+            reproduciendo: true,
+            urlCaratula: null,
+            duracionUs: 0,
+            puedeBuscar: false,
+        });
+    }
+
+    _cancelarEspera() {
+        if (this._idEspera) {
+            GLib.source_remove(this._idEspera);
+            this._idEspera = 0;
+        }
+    }
+
+    _emitir(pista) {
+        try {
+            this._alCambiarPista?.(pista);
         } catch (error) {
             registrarError('multimedia: procesar pista', error);
         }

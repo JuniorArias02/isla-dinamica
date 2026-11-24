@@ -81,6 +81,10 @@ Puntos que el revisor puede preguntar, con la explicación preparada:
 
 * **Perfil Bluetooth propio (AirPods):** la extensión publica `org.bluez.Profile1` en el bus de sistema para leer la batería por auricular con el protocolo de Apple. Solo se usa con dispositivos que anuncian el UUID AAP y se retira en `disable()`.
 * **Partes internas de GNOME:** `_showNotification`, `osdWindowManager`, `dateMenu._clockDisplay` y el indicador de micrófono de Ajustes rápidos. Se usan porque no hay API pública equivalente; todas se restauran en `disable()` y, si fallan, se llama al comportamiento original de GNOME.
+* **Indicador de grabación de GNOME:** mientras se graba, la isla oculta el contenedor de `statusArea.screenRecording` porque ya muestra el contador y el botón para detener. Es opcional (`ocultar-indicador-grabacion`) y se restaura al terminar y en `disable()`.
+* **Gestor de menús del panel:** la cápsula se crea sin menú (`dontCreateMenu`), pero GNOME le registra uno vacío en `Main.panel.menuManager`. La isla lo quita al montarse porque ese gestor abría el menú del reloj mientras se arrastraba la cápsula. El botón se destruye en `disable()`.
+* **Notificaciones críticas:** también pasan por la isla (más tiempo en pantalla). Si la isla falla, vuelven al banner nativo.
+* **Micrófono:** para saber si hay una llamada en curso se mira qué app tiene un flujo de grabación (`getMixerControl().get_source_outputs()`, nombre e id de la app) y los títulos de las ventanas. No se escucha ni se graba audio. El botón de silenciar usa `change_is_muted` del micrófono por defecto, como los Ajustes rápidos.
 * **Animaciones forzadas:** `animationRequired` solo afecta a los actores de la isla y se puede desactivar en los ajustes (`forzar-animaciones`).
 
 ---

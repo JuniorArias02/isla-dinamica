@@ -6,6 +6,9 @@
  *
  *   No molestar                 [ ● ]
  *   ─────────────────────────────────
+ *   [captura]    Capturar pantalla
+ *   [grabar]     Grabar pantalla        (mientras se graba: "Detener grabación")
+ *   ─────────────────────────────────
  *   [engranaje]  Ajustes de la isla
  *   [documento]  Registro de errores
  *
@@ -19,13 +22,15 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import {protegido} from '../registro.js';
+import {icono, ICONOS} from './iconos.js';
 
 export class MenuContextual {
     /**
      * @param {object} opciones
      * @param {Clutter.Actor} opciones.fuente - Actor bajo el que se abre (la cápsula).
      * @param {Clutter.Actor} opciones.dueno - Actor del panel que recibe el foco del menú.
-     * @param {object} opciones.acciones - establecerNoMolestar(bool), abrirAjustes(), abrirRegistro().
+     * @param {object} opciones.acciones - establecerNoMolestar(bool), abrirAjustes(), abrirRegistro(),
+     *   capturarPantalla(), grabarPantalla(), detenerGrabacion().
      * @param {Function} opciones.obtenerModos - Devuelve {noMolestar, avion} actuales.
      */
     constructor({fuente, dueno, acciones, obtenerModos}) {
@@ -43,6 +48,19 @@ export class MenuContextual {
         this._noMolestar.connect('toggled', protegido('menú: No molestar',
             (_elemento, activo) => acciones.establecerNoMolestar(activo)));
         this._menu.addMenuItem(this._noMolestar);
+
+        // Captura y grabación (las mismas herramientas que Impr Pant y Ctrl+Alt+Mayús+R).
+        this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        this._menu.addAction('Capturar pantalla',
+            protegido('menú: capturar pantalla', () => acciones.capturarPantalla()), icono(ICONOS.CAPTURA));
+        this._grabando = false;
+        this._elementoGrabar = this._menu.addAction('Grabar pantalla',
+            protegido('menú: grabar o detener', () => {
+                if (this._grabando)
+                    acciones.detenerGrabacion();
+                else
+                    acciones.grabarPantalla();
+            }), icono(ICONOS.GRABAR));
 
         this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this._menu.addAction('Ajustes de la isla',
@@ -70,6 +88,18 @@ export class MenuContextual {
     actualizarModos(modos) {
         if (this._noMolestar.state !== Boolean(modos?.noMolestar))
             this._noMolestar.setToggleState(Boolean(modos?.noMolestar));
+    }
+
+    /**
+     * Mientras se graba, "Grabar pantalla" pasa a ser "Detener grabación".
+     * @param {boolean} grabando
+     */
+    actualizarGrabacion(grabando) {
+        if (grabando === this._grabando)
+            return;
+        this._grabando = grabando;
+        this._elementoGrabar.label.text = grabando ? 'Detener grabación' : 'Grabar pantalla';
+        this._elementoGrabar.setIcon(icono(grabando ? ICONOS.DETENER : ICONOS.GRABAR));
     }
 
     destruir() {

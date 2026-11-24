@@ -37,6 +37,14 @@ export const ICONOS = Object.freeze({
     CHECK: 'check',
     BATERIA: 'bateria',
     AVION: 'avion',
+    GRABAR: 'grabar',
+    DETENER: 'detener',
+    CAPTURA: 'captura',
+    TELEFONO: 'telefono',
+    COLGAR: 'colgar',
+    MICROFONO: 'microfono',
+    MICROFONO_SILENCIADO: 'microfono-silenciado',
+    CAMARA: 'camara',
 });
 
 let rutaIconos = null;
@@ -68,6 +76,22 @@ export function icono(nombre) {
         cache.set(nombre, new Gio.FileIcon({file: archivo}));
     }
     return cache.get(nombre);
+}
+
+/**
+ * Icono a color de la app de un audio de chat (ej. la app "WhatsApp Web" de Brave).
+ * @param {{nombre: string, entradasEscritorio: string[]}|null} app
+ * @returns {Gio.Icon|null}
+ */
+export function iconoDeAppDeAudio(app) {
+    if (!app)
+        return null;
+    for (const entrada of app.entradasEscritorio ?? []) {
+        const encontrado = iconoDeAplicacion(null, entrada);
+        if (encontrado)
+            return encontrado;
+    }
+    return iconoDeAplicacion(app.nombre);
 }
 
 /**

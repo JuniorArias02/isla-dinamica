@@ -8,7 +8,7 @@
 import GLib from 'gi://GLib';
 
 import {ejecutar, prueba, igual} from '../utilidades.js';
-import {AJUSTES, ajuste} from '../../modulos/ajustes.js';
+import {AJUSTES, ARRASTRE_CAPSULA, ajuste} from '../../modulos/ajustes.js';
 
 const RUTA_ESQUEMA = GLib.Uri.resolve_relative(import.meta.url,
     '../../schemas/org.gnome.shell.extensions.isla-dinamica.gschema.xml', GLib.UriFlags.NONE);
@@ -20,7 +20,12 @@ function leerEsquema() {
     const claves = {};
     for (const [, nombre, tipo, cuerpo] of xml.matchAll(/<key name="([^"]+)" type="([^"]+)">([\s\S]*?)<\/key>/g)) {
         const textoDefecto = cuerpo.match(/<default>([^<]+)<\/default>/)[1].trim();
-        claves[nombre] = tipo === 'b' ? textoDefecto === 'true' : Number(textoDefecto);
+        if (tipo === 'b')
+            claves[nombre] = textoDefecto === 'true';
+        else if (tipo === 's')
+            claves[nombre] = textoDefecto.replace(/^'|'$/g, '');
+        else
+            claves[nombre] = Number(textoDefecto);
     }
     return claves;
 }
@@ -35,5 +40,13 @@ ejecutar('Ajustes', async () => {
     await prueba('los valores por defecto coinciden con el esquema', () => {
         for (const [clave, valor] of Object.entries(esquema))
             igual(ajuste(clave), valor, clave);
+    });
+
+    await prueba('el estilo de arrastre por defecto es "asomar" y sus valores son los del esquema', () => {
+        igual(ajuste(AJUSTES.ARRASTRE_CAPSULA), ARRASTRE_CAPSULA.ASOMAR);
+        const [, contenido] = GLib.file_get_contents(GLib.filename_from_uri(RUTA_ESQUEMA)[0]);
+        const xml = new TextDecoder().decode(contenido);
+        const opciones = [...xml.matchAll(/<choice value="([^"]+)"\/>/g)].map(([, valor]) => valor);
+        igual(opciones.sort(), Object.values(ARRASTRE_CAPSULA).sort());
     });
 });

@@ -30,6 +30,9 @@ import {
     MAXIMO_ALERTAS_EN_COLA,
     MAXIMO_NOTIFICACIONES_RECIENTES,
     TIEMPO_EXTRA_ALERTA_TRAS_HOVER_MS,
+    TIPOS_ALERTA,
+    TIEMPO_ALERTA_LLAMADA_MS,
+    TIEMPO_MAXIMO_LLAMADA_SONANDO_MS,
 } from './constantes.js';
 import {registrarDepuracion, registrarError} from './registro.js';
 
@@ -38,12 +41,17 @@ import {registrarDepuracion, registrarError} from './registro.js';
  * @property {string} estado - Uno de ESTADOS.
  * @property {object|null} alerta - Alerta visible ({tipo, clave, orden, datos}).
  * @property {object|null} pista - Pista activa del servicio multimedia.
+ * @property {object|null} audio - Audio de un chat sonando (nota de voz), aparte de la música.
  * @property {object[]} dispositivos - Dispositivos de audio Bluetooth conectados.
  * @property {{hora: string, fecha: string}|null} reloj - Hora y fecha actuales.
  * @property {object[]} notificaciones - Recientes, la más nueva primero.
  * @property {{estado: string, totalMs: number, restanteMs: number}|null} temporizador
  * @property {{microfono: boolean, camara: boolean, pantalla: boolean}} privacidad - Qué se está usando.
  * @property {{noMolestar: boolean, avion: boolean}} modos - "No molestar" y modo avión.
+ * @property {{hayCalendarios: boolean, inicioSemana: number, eventos: object[]}} calendario - Eventos del mes.
+ * @property {{grabando: boolean, transcurridoMs: number}} grabacion - Grabación de pantalla en curso.
+ * @property {{enLlamada: boolean, id: string|null, nombre: string, transcurridoMs: number, silenciado: boolean}} llamada
+ *   Llamada o videollamada en curso.
  * @property {{principal: string, secundaria: string|null, vistas: string[]}} actividades -
  *   Qué va en la cápsula, qué en el círculo y entre qué vistas se puede deslizar (valores de ACTIVIDADES).
  */
@@ -60,6 +68,11 @@ export class ControladorIsla {
 
         /** @type {object|null} Pista activa (o null si no hay reproductor). */
         this._pista = null;
+        /** Audio de un chat que suena (nota de voz): va aparte de la música. */
+        this._audio = null;
+        /** Llamada que suena: {clave, datos}. Si su alerta no se ve, queda en el círculo. */
+        this._llamadaEntrante = null;
+        this._idFinLlamadaEntrante = 0;
 
         /** @type {object[]} Dispositivos de audio conectados. */
         this._dispositivos = [];
@@ -76,6 +89,9 @@ export class ControladorIsla {
         /** @type {{microfono: boolean, camara: boolean, pantalla: boolean}} */
         this._privacidad = {microfono: false, camara: false, pantalla: false};
         this._modos = {noMolestar: false, avion: false};
+        this._calendario = {hayCalendarios: false, inicioSemana: 1, eventos: []};
+        this._grabacion = {grabando: false, transcurridoMs: 0};
+        this._llamada = {enLlamada: false, id: null, nombre: '', transcurridoMs: 0, silenciado: false};
 
         /** @type {string|null} Actividad que el usuario eligió ver en la cápsula (ACTIVIDADES). */
         this._actividadPreferida = null;
@@ -193,6 +209,66 @@ export class ControladorIsla {
     }
 
     /**
+     * Audio de un chat que suena (nota de voz de WhatsApp). `null` si no hay.
+     * @param {object|null} audio - Misma forma que una pista (con tipo AUDIO).
+     */
+    actualizarAudio(audio) {
+        this._audio = audio;
+        this._emitirVista();
+    }
+
+    /**
+     * Empieza a sonar una llamada: su alerta se muestra y, mientras suene, si la alerta
+     * se oculta, la llamada queda en el círculo.
+     * @param {{clave: string, datos: object}} llamada - Clave y datos de su alerta.
+     */
+    registrarLlamadaEntrante({clave, datos}) {
+        this._cancelarFinLlamadaEntrante();
+        this._llamadaEntrante = {clave, datos};
+        // Por si la app nunca quita su aviso: el círculo no se queda para siempre.
+        this._idFinLlamadaEntrante = GLib.timeout_add(GLib.PRIORITY_DEFAULT, TIEMPO_MAXIMO_LLAMADA_SONANDO_MS, () => {
+            this._idFinLlamadaEntrante = 0;
+            try {
+                this.quitarLlamadaEntrante(clave);
+            } catch (error) {
+                registrarError('controlador: fin de la llamada que suena', error);
+            }
+            return GLib.SOURCE_REMOVE;
+        });
+        this.agregarAlerta({tipo: TIPOS_ALERTA.LLAMADA, clave, duracionMs: TIEMPO_ALERTA_LLAMADA_MS, datos});
+    }
+
+    /**
+     * La llamada dejó de sonar (se contestó, se rechazó o colgó quien llamaba).
+     * @param {string} clave
+     */
+    quitarLlamadaEntrante(clave) {
+        this.descartarAlerta(clave);
+        if (this._llamadaEntrante?.clave !== clave)
+            return;
+        this._cancelarFinLlamadaEntrante();
+        this._llamadaEntrante = null;
+        this._emitirVista();
+    }
+
+    /** Tocar el círculo de la llamada que suena: vuelve su alerta con los botones. */
+    mostrarLlamadaEntrante() {
+        const llamada = this._llamadaEntrante;
+        if (!llamada)
+            return;
+        this.agregarAlerta({
+            tipo: TIPOS_ALERTA.LLAMADA, clave: llamada.clave, duracionMs: TIEMPO_ALERTA_LLAMADA_MS, datos: llamada.datos,
+        });
+    }
+
+    _cancelarFinLlamadaEntrante() {
+        if (this._idFinLlamadaEntrante) {
+            GLib.source_remove(this._idFinLlamadaEntrante);
+            this._idFinLlamadaEntrante = 0;
+        }
+    }
+
+    /**
      * Informa los dispositivos de audio Bluetooth conectados.
      * @param {object[]} dispositivos
      */
@@ -260,6 +336,9 @@ export class ControladorIsla {
      * @returns {boolean} false si ya estaba en el extremo (la UI hace un rebote).
      */
     cambiarVistaCompacta(direccion) {
+        // La llamada y la grabación no se pueden quitar de la cápsula: la cápsula rebota.
+        if (this._grabacion.grabando || this._llamada.enLlamada)
+            return false;
         const {principal, vistas} = this._calcularActividades();
         const siguiente = vistas[vistas.indexOf(principal) + direccion];
         if (!siguiente)
@@ -271,13 +350,32 @@ export class ControladorIsla {
     }
 
     /**
+     * Vista que está "al lado" de la actual en la cápsula, para asomarse a ella
+     * arrastrando. La lista es circular: con dos vistas, las dos direcciones llevan
+     * a la otra; con tres, cada dirección a una distinta.
+     * @param {number} direccion - +1 (siguiente) o -1 (anterior) en VISTAS_COMPACTAS.
+     * @returns {string|null} La actividad vecina, o null si no hay a dónde ir (o se está grabando).
+     */
+    vistaVecina(direccion) {
+        if (this._grabacion.grabando || this._llamada.enLlamada)
+            return null;
+        const {principal, vistas} = this._calcularActividades();
+        if (vistas.length < 2)
+            return null;
+        const indice = vistas.indexOf(principal);
+        return vistas[(indice + direccion + vistas.length) % vistas.length];
+    }
+
+    /**
      * Decide qué va en la cápsula (principal) y qué en el círculo (secundaria).
-     *   1. Actividades disponibles: temporizador en marcha/pausa, música sonando.
+     *   1. Actividades disponibles: audio de chat sonando, temporizador en marcha/pausa, música sonando.
      *   2. Vistas de la cápsula: la hora (siempre) + las disponibles, en orden VISTAS_COMPACTAS.
      *   3. Principal: la vista preferida del usuario si sigue disponible; si no, la primera
      *      actividad por ORDEN_ACTIVIDADES; si no hay ninguna, la hora.
      *   4. Secundaria: otra actividad (con la hora delante, la primera activa); si no hay,
      *      los auriculares conectados.
+     *   5. En llamada o grabando, eso manda en la cápsula. Una llamada que suena con su
+     *      alerta oculta ocupa el círculo.
      * @returns {{principal: string, secundaria: string|null, vistas: string[]}}
      */
     _calcularActividades() {
@@ -287,6 +385,8 @@ export class ControladorIsla {
                 return estadoTemporizador === ESTADOS_TEMPORIZADOR.CORRIENDO || estadoTemporizador === ESTADOS_TEMPORIZADOR.PAUSADO;
             if (actividad === ACTIVIDADES.MUSICA)
                 return Boolean(this._pista?.reproduciendo);
+            if (actividad === ACTIVIDADES.AUDIO)
+                return Boolean(this._audio?.reproduciendo);
             return false;
         });
 
@@ -297,7 +397,23 @@ export class ControladorIsla {
         let secundaria = disponibles.find(actividad => actividad !== principal) ?? null;
         if (!secundaria && this._dispositivos.length > 0)
             secundaria = ACTIVIDADES.AURICULARES;
-        return {principal, secundaria, vistas};
+
+        // En llamada (o grabando la pantalla): la llamada (o la grabación) manda en la cápsula;
+        // lo que iba en ella (si era una actividad) pasa al círculo.
+        let resultado = {principal, secundaria, vistas};
+        if (this._llamada.enLlamada) {
+            const desplazada = principal !== ACTIVIDADES.HORA ? principal : secundaria;
+            resultado = {principal: ACTIVIDADES.LLAMADA, secundaria: desplazada, vistas};
+        } else if (this._grabacion.grabando) {
+            const desplazada = principal !== ACTIVIDADES.HORA ? principal : secundaria;
+            resultado = {principal: ACTIVIDADES.GRABACION, secundaria: desplazada, vistas};
+        }
+
+        // Una llamada que suena con su alerta oculta va al círculo, por delante de todo.
+        const llamadaOculta = this._llamadaEntrante && this._alertaActual?.clave !== this._llamadaEntrante.clave;
+        if (llamadaOculta)
+            resultado.secundaria = ACTIVIDADES.LLAMADA_ENTRANTE;
+        return resultado;
     }
 
     /**
@@ -315,6 +431,33 @@ export class ControladorIsla {
      */
     actualizarModos(modos) {
         this._modos = modos;
+        this._emitirVista();
+    }
+
+    /**
+     * Grabación de pantalla (al empezar, cada segundo y al terminar).
+     * @param {{grabando: boolean, transcurridoMs: number}} grabacion
+     */
+    actualizarGrabacion(grabacion) {
+        this._grabacion = grabacion;
+        this._emitirVista();
+    }
+
+    /**
+     * Llamada o videollamada en curso (al empezar, cada segundo, al silenciar y al terminar).
+     * @param {{enLlamada: boolean, id: string|null, nombre: string, transcurridoMs: number, silenciado: boolean}} llamada
+     */
+    actualizarLlamada(llamada) {
+        this._llamada = llamada;
+        this._emitirVista();
+    }
+
+    /**
+     * Eventos del calendario de GNOME (página Calendario).
+     * @param {{hayCalendarios: boolean, inicioSemana: number, eventos: object[]}} calendario
+     */
+    actualizarCalendario(calendario) {
+        this._calendario = calendario;
         this._emitirVista();
     }
 
@@ -377,6 +520,8 @@ export class ControladorIsla {
     /** Libera temporizadores. Debe llamarse desde disable(). */
     destruir() {
         this._cancelarTemporizador();
+        this._cancelarFinLlamadaEntrante();
+        this._llamadaEntrante = null;
         this._colaAlertas = [];
         this._alertaActual = null;
         this._interfaz = null;
@@ -446,7 +591,7 @@ export class ControladorIsla {
             estado = ESTADOS.EXPANDIDO;
         else if (this._alertaActual)
             estado = ESTADOS.ALERTA;
-        else if (this._pista?.reproduciendo)
+        else if (this._pista?.reproduciendo || this._audio?.reproduciendo)
             estado = ESTADOS.MULTIMEDIA;
         else
             estado = ESTADOS.REPOSO;
@@ -460,12 +605,16 @@ export class ControladorIsla {
             estado,
             alerta: this._alertaActual,
             pista: this._pista,
+            audio: this._audio,
             dispositivos: this._dispositivos,
             reloj: this._reloj,
             notificaciones: this._notificaciones,
             temporizador: this._temporizador,
             privacidad: this._privacidad,
             modos: this._modos,
+            calendario: this._calendario,
+            grabacion: this._grabacion,
+            llamada: this._llamada,
             actividades: this._calcularActividades(),
         };
         // Un fallo al dibujar no debe romper la máquina de estados.

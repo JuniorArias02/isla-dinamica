@@ -64,6 +64,9 @@ export default class PreferenciasIslaDinamica extends ExtensionPreferences {
             'Segundos que la isla abierta sigue visible después de sacar el puntero.', 1, 15));
         isla.add(this._interruptor(AJUSTES.OCULTAR_RELOJ_GNOME, 'Ocultar el reloj de Ubuntu',
             'La isla ya muestra la hora. El botón del calendario sigue funcionando.'));
+        isla.add(this._opciones(AJUSTES.ARRASTRE_CAPSULA, 'Al arrastrar la cápsula',
+            'Asomarse sigue al puntero y cambia al soltar pasada la mitad.',
+            [['asomar', 'Asomarse'], ['cambiar', 'Cambiar al instante']]));
         isla.add(this._interruptor(AJUSTES.FORZAR_ANIMACIONES, 'Animaciones siempre',
             'La isla anima aunque las animaciones del sistema estén desactivadas.'));
         pagina.add(isla);
@@ -81,6 +84,12 @@ export default class PreferenciasIslaDinamica extends ExtensionPreferences {
             'Aviso breve al copiar algo (nunca se muestra lo copiado).'));
         avisos.add(this._interruptor(AJUSTES.AVISAR_MODOS, '"No molestar" y modo avión',
             'Aviso breve al activarlos o desactivarlos.'));
+        avisos.add(this._interruptor(AJUSTES.AVISAR_CAPTURAS, 'Capturas y grabaciones de pantalla',
+            'Grabación en vivo en la cápsula, y avisos de captura (con miniatura) y de grabación guardada.'));
+        avisos.add(this._interruptor(AJUSTES.AVISAR_LLAMADAS, 'Llamadas y videollamadas',
+            'La llamada que suena (WhatsApp, Meet...) y la llamada en curso con su contador y el micrófono.'));
+        avisos.add(this._interruptor(AJUSTES.OCULTAR_INDICADOR_GRABACION, 'Ocultar el indicador de grabación de GNOME',
+            'Mientras se graba, la isla ya muestra el contador y el botón para detener.'));
         avisos.add(this._interruptor(AJUSTES.MOSTRAR_PRIVACIDAD, 'Puntitos de privacidad',
             'Naranja = micrófono, verde = cámara, rojo = pantalla en uso.'));
         pagina.add(avisos);
@@ -131,6 +140,36 @@ export default class PreferenciasIslaDinamica extends ExtensionPreferences {
     _interruptor(clave, titulo, subtitulo) {
         const fila = new Adw.SwitchRow({title: titulo, subtitle: subtitulo});
         this._ajustes.bind(clave, fila, 'active', Gio.SettingsBindFlags.DEFAULT);
+        return fila;
+    }
+
+    /**
+     * Fila desplegable para una opción de texto con valores fijos.
+     * @param {string} clave
+     * @param {string} titulo
+     * @param {string} subtitulo
+     * @param {Array<[string, string]>} opciones - [valor guardado, texto visible].
+     */
+    _opciones(clave, titulo, subtitulo, opciones) {
+        const fila = new Adw.ComboRow({
+            title: titulo,
+            subtitle: subtitulo,
+            model: Gtk.StringList.new(opciones.map(([, texto]) => texto)),
+        });
+        const valores = opciones.map(([valor]) => valor);
+        const sincronizar = () => {
+            const indice = valores.indexOf(this._ajustes.get_string(clave));
+            if (indice >= 0 && indice !== fila.selected)
+                fila.selected = indice;
+        };
+        sincronizar();
+        fila.connect('notify::selected', () => {
+            const valor = valores[fila.selected];
+            if (valor && valor !== this._ajustes.get_string(clave))
+                this._ajustes.set_string(clave, valor);
+        });
+        // Si cambia desde otro sitio, la ventana se actualiza.
+        this._ajustes.connect(`changed::${clave}`, sincronizar);
         return fila;
     }
 

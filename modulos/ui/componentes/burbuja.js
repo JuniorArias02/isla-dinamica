@@ -7,7 +7,10 @@
  *
  *   temporizador → mini anillo naranja que se vacía + cronómetro
  *   música       → la portada en círculo
+ *   audio        → el logo de la app del audio (WhatsApp)
  *   auriculares  → anillo de batería con el icono de los AirPods
+ *   llamada que suena (con su aviso oculto) → círculo verde con un teléfono que late;
+ *                  tocarlo vuelve a mostrar el aviso con sus botones
  *
  * Tocarla intercambia las actividades (lo decide IslaUI); con el puntero
  * encima, la isla se abre en la página de lo que muestra.
@@ -17,10 +20,17 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
-import {DURACION_APARICION_MS, RESORTES, ACTIVIDADES, ESTADOS_TEMPORIZADOR} from '../../constantes.js';
+import {
+    DURACION_APARICION_MS,
+    RESORTES,
+    ACTIVIDADES,
+    ESTADOS_TEMPORIZADOR,
+    ESCALA_CAMBIO_BURBUJA,
+    DURACION_CAMBIO_BURBUJA_MS,
+} from '../../constantes.js';
 import {animar, animarConResorte} from '../movimiento.js';
-import {aparecerConRebote} from '../animaciones.js';
-import {icono, ICONOS} from '../iconos.js';
+import {aparecerConRebote, latir, detenerLatido} from '../animaciones.js';
+import {icono, ICONOS, iconoDeAppDeAudio} from '../iconos.js';
 import {IndicadorBateria} from './anilloBateria.js';
 import {nivelMostrado} from './bateriasAirpods.js';
 import {AnilloProgreso} from './anilloProgreso.js';
@@ -47,10 +57,25 @@ class Burbuja extends St.Bin {
             [ACTIVIDADES.AURICULARES]: new IndicadorBateria({diametro: DIAMETRO_CONTENIDO_PX, grosor: 2.5, centro: 'icono'}),
             [ACTIVIDADES.TEMPORIZADOR]: this._crearTemporizador(),
             [ACTIVIDADES.MUSICA]: new Caratula({claseTamano: 'isla-caratula-burbuja'}),
+            [ACTIVIDADES.AUDIO]: new Caratula({claseTamano: 'isla-caratula-burbuja'}),
+            [ACTIVIDADES.LLAMADA_ENTRANTE]: new St.Icon({
+                gicon: icono(ICONOS.TELEFONO),
+                style_class: 'isla-burbuja-llamada-icono',
+                x_align: Clutter.ActorAlign.CENTER,
+                y_align: Clutter.ActorAlign.CENTER,
+            }),
         };
+        this._latiendo = false;
+        // El teléfono late solo mientras se ve la llamada que suena.
+        this.connect('notify::mapped', () => this._sincronizarLatido());
 
         this._tipo = null;
+        /** Cambio de actividad en curso (encogiéndose) y los datos que llegaron mientras tanto. */
+        this._cambiando = false;
+        this._pendiente = null;
         this.connect('destroy', () => {
+            this._latiendo = false;
+            detenerLatido(this._contenidos[ACTIVIDADES.LLAMADA_ENTRANTE]);
             this.remove_all_transitions();
             // Los contenidos que no están dentro de la burbuja no se destruyen solos.
             for (const contenido of Object.values(this._contenidos)) {
@@ -88,13 +113,61 @@ class Burbuja extends St.Bin {
      * @param {string|null} datos.tipo - Valor de ACTIVIDADES, o null.
      * @param {object|null} [datos.dispositivo] - Auriculares (para AURICULARES).
      * @param {object|null} [datos.pista] - Pista (para MUSICA).
+     * @param {object|null} [datos.audio] - Audio de un chat (para AUDIO).
      * @param {object|null} [datos.temporizador] - {totalMs, restanteMs, estado} (para TEMPORIZADOR).
      */
-    actualizar({tipo, dispositivo = null, pista = null, temporizador = null}) {
+    actualizar(datos) {
+        this._pendiente = datos;
+        // Encogiéndose: al terminar se aplica lo último que llegó.
+        if (this._cambiando)
+            return;
+        // Otra actividad en el círculo: se encoge hasta un punto, cambia y vuelve a crecer.
+        if (this._tipo && datos.tipo && datos.tipo !== this._tipo && this.mapped) {
+            this._encoger();
+            return;
+        }
+        this._aplicar(datos, false);
+    }
+
+    /** Fase 1 del cambio: el círculo se encoge hasta un punto. */
+    _encoger() {
+        this._cambiando = true;
+        this.set_pivot_point(0.5, 0.5);
+        animar(this, {
+            scale_x: ESCALA_CAMBIO_BURBUJA,
+            scale_y: ESCALA_CAMBIO_BURBUJA,
+            opacity: 0,
+            duration: DURACION_CAMBIO_BURBUJA_MS,
+            mode: Clutter.AnimationMode.EASE_IN_QUAD,
+            onComplete: () => {
+                this._cambiando = false;
+                this._aplicar(this._pendiente, true);
+            },
+            // Si otra animación la interrumpe (ej. se une a la cápsula), no se queda a medias.
+            onStopped: terminado => {
+                if (!terminado && this._cambiando) {
+                    this._cambiando = false;
+                    this._aplicar(this._pendiente, false);
+                }
+            },
+        });
+    }
+
+    /**
+     * @param {object} datos - {tipo, dispositivo, pista, temporizador}
+     * @param {boolean} crecer - true tras encogerse: el círculo vuelve a crecer con resorte.
+     */
+    _aplicar({tipo, dispositivo = null, pista = null, audio = null, temporizador = null}, crecer) {
         const anterior = this._tipo;
         this._tipo = tipo;
 
+        if (tipo === ACTIVIDADES.LLAMADA_ENTRANTE)
+            this.add_style_class_name('llamada');
+        else
+            this.remove_style_class_name('llamada');
+
         if (!tipo) {
+            this._sincronizarLatido();
             if (anterior)
                 this._unir();
             return;
@@ -111,6 +184,11 @@ class Burbuja extends St.Bin {
         case ACTIVIDADES.MUSICA:
             contenido.establecer(pista?.urlCaratula ?? null);
             break;
+        case ACTIVIDADES.AUDIO:
+            // Audio de un chat: el logo de la app en lugar de la nota.
+            contenido.establecerIcono(iconoDeAppDeAudio(audio?.appAudio ?? null));
+            contenido.establecer(null);
+            break;
         case ACTIVIDADES.TEMPORIZADOR: {
             const {totalMs = 0, restanteMs = 0, estado} = temporizador ?? {};
             const fraccion = totalMs > 0 ? restanteMs / totalMs : 0;
@@ -124,10 +202,35 @@ class Burbuja extends St.Bin {
         }
         }
 
-        if (!anterior)
+        if (!anterior) {
             this._separar();
-        else if (tipo !== anterior)
+        } else if (crecer) {
+            // Fase 2: vuelve a crecer desde el punto, con rebote.
+            animar(this, {opacity: 255, duration: DURACION_CAMBIO_BURBUJA_MS, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+            animarConResorte(this, {scale_x: 1, scale_y: 1}, {resorte: RESORTES.FLORECER});
+        } else if (tipo !== anterior) {
             aparecerConRebote(contenido, {escalaInicial: 0.3});
+        }
+        // Al final: la aparición usa la opacidad del contenido y el latido también.
+        this._sincronizarLatido();
+    }
+
+    /** Vuelve a salir de la cápsula (tras asomarse a otra vista, que la tapó). */
+    reaparecer() {
+        if (this._tipo && !this._cambiando)
+            this._separar();
+    }
+
+    _sincronizarLatido() {
+        const debeLatir = this.mapped && this._tipo === ACTIVIDADES.LLAMADA_ENTRANTE;
+        if (debeLatir === this._latiendo)
+            return;
+        this._latiendo = debeLatir;
+        const telefono = this._contenidos[ACTIVIDADES.LLAMADA_ENTRANTE];
+        if (debeLatir)
+            latir(telefono);
+        else
+            detenerLatido(telefono);
     }
 
     /** La burbuja sale de la cápsula con un rebote. */

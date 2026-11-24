@@ -5,7 +5,8 @@
  * Caratula — portada del álbum con esquinas redondeadas (o círculo).
  *
  * Usa la imagen como fondo CSS para que St la recorte con el border-radius.
- * Si no hay portada, muestra una nota musical sobre un degradado.
+ * Si no hay portada, muestra una nota musical sobre un degradado, o el icono
+ * de la app si se le dio uno (audio de un chat: el logo de WhatsApp).
  */
 
 import Clutter from 'gi://Clutter';
@@ -38,6 +39,43 @@ class Caratula extends St.Bin {
         this.set_child(this._iconoRespaldo);
 
         this._url = undefined;
+        this._cargando = false;
+        this._iconoApp = null;
+    }
+
+    /**
+     * Icono a mostrar en lugar de la nota cuando no hay portada (null = la nota).
+     * @param {Gio.Icon|null} gicon - Icono a color de una app.
+     */
+    establecerIcono(gicon) {
+        if (gicon === this._iconoApp)
+            return;
+        this._iconoApp = gicon;
+        this._iconoRespaldo.gicon = gicon ?? icono(ICONOS.NOTA);
+        if (gicon)
+            this.add_style_class_name('con-icono-app');
+        else
+            this.remove_style_class_name('con-icono-app');
+    }
+
+    /**
+     * Mientras carga la canción siguiente: hueco gris sin icono (esqueleto).
+     * Al salir, la portada nueva entra con el fundido de establecer().
+     * @param {boolean} cargando
+     */
+    establecerCargando(cargando) {
+        if (cargando === this._cargando)
+            return;
+        this._cargando = cargando;
+        if (cargando) {
+            this.establecer(null);
+            this.add_style_class_name('cargando');
+            this._iconoRespaldo.hide();
+        } else {
+            this.remove_style_class_name('cargando');
+            if (!this._url)
+                this._iconoRespaldo.show();
+        }
     }
 
     /**

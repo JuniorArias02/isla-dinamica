@@ -64,6 +64,28 @@ export const APPS_CONOCIDAS = Object.freeze([
         patron: /slack/i,
         esChat: true,
     },
+    // Videollamadas web (sus avisos llegan como "Google Chrome", "Brave"...).
+    {
+        id: 'meet',
+        nombre: 'Google Meet',
+        entradasEscritorio: [],
+        patron: /meet\.google\.com|google meet/i,
+        esChat: false,
+    },
+    {
+        id: 'teams',
+        nombre: 'Teams',
+        entradasEscritorio: ['teams-for-linux', 'com.github.IsmaelMartinez.teams_for_linux'],
+        patron: /teams\.microsoft\.com|teams\.live\.com|microsoft teams|teams-for-linux/i,
+        esChat: true,
+    },
+    {
+        id: 'zoom',
+        nombre: 'Zoom',
+        entradasEscritorio: ['Zoom', 'us.zoom.Zoom'],
+        patron: /zoom\.us|\bzoom\b/i,
+        esChat: false,
+    },
     {
         id: 'gmail',
         nombre: 'Gmail',
