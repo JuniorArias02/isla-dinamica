@@ -15,9 +15,11 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
-import {INTERVALO_PROGRESO_MS} from '../../constantes.js';
+import {INTERVALO_PROGRESO_MS, DURACION_CAMBIO_COLOR_MS} from '../../constantes.js';
 import {protegido} from '../../registro.js';
+import {animarValor} from '../movimiento.js';
 import {BarraNivel} from './barraNivel.js';
+import {cssRgba, mismoColor, mezclarColores} from '../estilos/tinte.js';
 
 /**
  * Convierte microsegundos a "m:ss".
@@ -71,7 +73,38 @@ class BarraProgreso extends St.BoxLayout {
         this.add_child(this._tiempoTotal);
 
         this._fraccion = 0;
+        this._color = null;
+        this._colorVisible = null;
+        this._cambioColor = null;
+        this.connect('destroy', () => this._cambioColor?.stop());
         this.reiniciar(0);
+    }
+
+    /**
+     * Color del relleno (el de la canción, con el estilo Liquid Glass). null = el del CSS.
+     * @param {{r: number, g: number, b: number}|null} color - Ya ajustado (colorDeAcento).
+     */
+    establecerColor(color) {
+        if (mismoColor(color, this._color))
+            return;
+        this._color = color;
+        this._cambioColor?.stop();
+        this._cambioColor = null;
+        const desde = this._colorVisible;
+        // De un color a otro, se mezcla poco a poco (como la onda y el tinte).
+        if (!desde || !color) {
+            this._pintar(color);
+            return;
+        }
+        this._cambioColor = animarValor(this, {
+            duracion: DURACION_CAMBIO_COLOR_MS,
+            alCambiar: avance => this._pintar(mezclarColores(desde, color, avance)),
+        });
+    }
+
+    _pintar(color) {
+        this._colorVisible = color;
+        this._barra.relleno.style = color ? `background-color: ${cssRgba(color)};` : null;
     }
 
     /**

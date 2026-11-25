@@ -6,7 +6,7 @@ Cómo preparar y publicar una versión nueva de la Isla Dinámica: en GitHub (ve
 
 ## 1. Preparar la versión
 
-1. Actualiza `version-name` en `metadata.json` (por ejemplo `"1.1"`). El campo `version` (número entero) lo gestiona extensions.gnome.org al subir cada paquete; en GitHub se puede dejar como está.
+1. Actualiza `version-name` en `metadata.json` (por ejemplo `"1.1"`) y añade la sección de la versión en `NOVEDADES.md`. El campo `version` (número entero) lo gestiona extensions.gnome.org al subir cada paquete; en GitHub se puede dejar como está.
 2. Comprueba todo, incluido el paquete tal como lo recibirán los usuarios:
    ```bash
    npm run probar:todo
@@ -37,7 +37,7 @@ No incluye `pruebas/`, `.docs/`, `node_modules/` ni la configuración de desarro
    git tag -a v1.0 -m "Isla Dinámica 1.0"
    git push origin v1.0
    ```
-2. En GitHub: **Releases → Draft a new release**, elige la etiqueta `v1.0`, escribe las novedades y adjunta el `.zip` de `dist/`.
+2. En GitHub: **Releases → Draft a new release**, elige la etiqueta `v1.0`, copia como descripción la sección de esa versión de [NOVEDADES.md](../NOVEDADES.md) y adjunta el `.zip` de `dist/`.
 
 Instalación para los usuarios:
 

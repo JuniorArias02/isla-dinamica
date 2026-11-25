@@ -37,7 +37,8 @@ import {
     debeConfirmarAsomo,
     direccionCambioDirecto,
 } from './logicaAsomo.js';
-import {ajuste, alCambiarAjuste, dejarDeEscucharAjustes, AJUSTES, ARRASTRE_CAPSULA, ESTILOS_ISLA} from '../ajustes.js';
+import {ajuste, alCambiarAjuste, dejarDeEscucharAjustes, AJUSTES, ARRASTRE_CAPSULA} from '../ajustes.js';
+import {GestorEstilos} from './estilos/gestorEstilos.js';
 import {BotonPanel} from './botonPanel.js';
 import {FASES_ASOMO} from './componentes/asomo.js';
 import {TarjetaFlotante} from './tarjetaFlotante.js';
@@ -101,7 +102,10 @@ export class IslaUI {
      * @param {Function} acciones.cambiarVistaCompacta - Recibe +1/-1; devuelve false si ya estaba en el extremo.
      * @param {Function} acciones.vistaVecina - Recibe +1/-1; devuelve la actividad de al lado o null.
      */
-    constructor(acciones) {
+    constructor(acciones, {rutaExtension}) {
+        this._rutaExtension = rutaExtension;
+        /** @type {GestorEstilos|null} Se crea al montar (carga las hojas de estilos). */
+        this._estilos = null;
         this._acciones = acciones;
         this._vista = {estado: ESTADOS.REPOSO, alerta: null, pista: null, dispositivos: []};
         this._ordenAlertaMostrada = -1;
@@ -169,6 +173,7 @@ export class IslaUI {
                 const actividad = ACTIVIDAD_DE_PAGINA[id];
                 if (actividad)
                     Promise.resolve().then(() => this._acciones?.establecerActividadPreferida(actividad));
+                this._actualizarTinteTarjeta();
             },
             // La página visible cambió de alto: la isla se reajusta con rebote.
             alCambiarAltura: () => {
@@ -226,8 +231,11 @@ export class IslaUI {
         Main.layoutManager.addTopChrome(this._tarjeta);
 
         // Estilo (Liquid Glass o negro clásico): una clase en las dos raíces; cambia al instante.
-        this._aplicarEstilo(ajuste(AJUSTES.ESTILO_ISLA));
-        alCambiarAjuste(AJUSTES.ESTILO_ISLA, estilo => this._aplicarEstilo(estilo), this);
+        this._estilos = new GestorEstilos({rutaExtension: this._rutaExtension, raices: [this._boton, this._tarjeta]});
+        this._estilos.aplicar(ajuste(AJUSTES.ESTILO_ISLA));
+        // Después de aplicarlo, extension.js pide redibujar la vista (cualquier ajuste lo hace):
+        // así lo que el estilo no usa (ej. el color de la portada) se quita o se pone.
+        alCambiarAjuste(AJUSTES.ESTILO_ISLA, estilo => this._estilos?.aplicar(estilo), this);
 
         // El reloj de Ubuntu se oculta (la isla muestra la hora) según el ajuste, y reacciona al instante.
         this._relojGnome = Main.panel.statusArea.dateMenu?._clockDisplay ?? null;
@@ -258,20 +266,11 @@ export class IslaUI {
     }
 
     /**
-     * Liquid Glass: la clase `isla-cristal` en la cápsula y en la tarjeta activa los
-     * estilos de vidrio de stylesheet.css (sección "Liquid Glass").
-     * @param {string} estilo - Valor de ESTILOS_ISLA.
+     * La isla abierta se tiñe con el color de la canción mientras muestra la página Música.
      */
-    _aplicarEstilo(estilo) {
-        const cristal = estilo === ESTILOS_ISLA.CRISTAL;
-        for (const raiz of [this._boton, this._tarjeta]) {
-            if (cristal)
-                raiz.add_style_class_name('isla-cristal');
-            else
-                raiz.remove_style_class_name('isla-cristal');
-            // El vidrio de verdad (lo de detrás desenfocado), además del CSS.
-            raiz.establecerCristal(cristal);
-        }
+    _actualizarTinteTarjeta() {
+        const conMusica = this._vista.estado === ESTADOS.EXPANDIDO && this._expandida.paginaVisible === PAGINAS.MUSICA;
+        this._tarjeta.establecerTinte(conMusica ? this._vista.pista?.colorPortada ?? null : null);
     }
 
     /**
@@ -317,11 +316,13 @@ export class IslaUI {
 
     /**
      * Dibuja la vista calculada por el ControladorIsla.
-     * @param {import('../controlador.js').Vista} vista
+     * @param {import('../controlador.js').Vista} vistaCompleta
      */
-    mostrarVista(vista) {
+    mostrarVista(vistaCompleta) {
         if (this._destruida)
             return;
+        // Lo que el estilo elegido no usa no llega a dibujarse (ej. el color de la portada).
+        const vista = this._estilos?.adaptarVista(vistaCompleta) ?? vistaCompleta;
         this._vista = vista;
         const {estado, alerta, pista, dispositivos} = vista;
 
@@ -352,6 +353,7 @@ export class IslaUI {
             this._paginaSolicitada = null;
 
         this._interaccion.alCambiarEstado(estado);
+        this._actualizarTinteTarjeta();
     }
 
     /** Destruye todo en orden inverso. Se llama desde disable(). */
@@ -370,6 +372,8 @@ export class IslaUI {
             this._idRecolocar = 0;
         }
         this._restaurarRelojDeGnome();
+        this._estilos?.destruir();
+        this._estilos = null;
         this._interaccion.destruir();
 
         Main.layoutManager.removeChrome(this._tarjeta);

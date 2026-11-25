@@ -27,8 +27,17 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-import {RESORTES, RETRASO_CONTENIDO_MS, MARGEN_PANTALLA_PX, RADIO_TARJETA_PX, BRILLO_VIDRIO_TARJETA} from '../constantes.js';
+import {
+    RESORTES,
+    RETRASO_CONTENIDO_MS,
+    MARGEN_PANTALLA_PX,
+    RADIO_TARJETA_PX,
+    BRILLO_VIDRIO_TARJETA,
+    ALCANCE_LUZ_TARJETA_PX,
+} from '../constantes.js';
 import {Vidrio} from './componentes/vidrio.js';
+import {CapaTinte} from './componentes/capaTinte.js';
+import {LuzVidrio} from './componentes/luzVidrio.js';
 import {registrarAviso, registrarDepuracion, protegido} from '../registro.js';
 import {
     animarConResorte,
@@ -75,6 +84,9 @@ class TarjetaFlotante extends St.Widget {
         this._vidrio = new Vidrio({radio: RADIO_TARJETA_PX, conVentanas: true, brillo: BRILLO_VIDRIO_TARJETA});
         this._vidrio.visible = false;
         this.add_child(this._vidrio);
+        // El color de la canción, sobre el vidrio (solo con la página Música a la vista).
+        this._tinte = new CapaTinte({claseExtra: 'tarjeta'});
+        this.add_child(this._tinte);
         this._brillo = new St.Widget({style_class: 'isla-cristal-brillo', x_expand: true, y_expand: true});
         this.add_child(this._brillo);
 
@@ -86,14 +98,45 @@ class TarjetaFlotante extends St.Widget {
             y_expand: true,
         });
         this.add_child(this._lienzo);
+
+        // Liquid Glass: la luz del canto que sigue al puntero, encima de todo (no recibe clics).
+        this._luz = new LuzVidrio({radio: RADIO_TARJETA_PX, alcance: ALCANCE_LUZ_TARJETA_PX});
+        this.add_child(this._luz);
+        this.connect('motion-event', (_actor, evento) => {
+            const [x, y] = evento.get_coords();
+            this._luz.seguir(x, y);
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this.connect('notify::hover', () => {
+            if (!this.hover)
+                this._luz.apagar();
+        });
     }
 
     /**
      * Liquid Glass: muestra (o quita) el vidrio de verdad detrás del contenido.
      * @param {boolean} activo
      */
-    establecerCristal(activo) {
+    establecerVidrio(activo) {
         this._vidrio.visible = activo;
+    }
+
+    /**
+     * Liquid Glass: la luz del canto que sigue al puntero.
+     * @param {boolean} activa
+     */
+    establecerLuz(activa) {
+        this._luz.visible = activa;
+        if (!activa)
+            this._luz.apagar();
+    }
+
+    /**
+     * Tiñe la isla con el color de la canción (o lo quita).
+     * @param {{r: number, g: number, b: number}|null} color - Color de la carátula.
+     */
+    establecerTinte(color) {
+        this._tinte.establecerColor(color);
     }
 
     /** @returns {boolean} true si está visible y no se está cerrando. */

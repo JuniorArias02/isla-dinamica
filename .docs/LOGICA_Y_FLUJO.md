@@ -221,6 +221,12 @@ Los valores fijos viven en `modulos/constantes.js`. Si cambias uno, cámbialo al
 | `ESCALA_SALIDA_CONTENIDO` / `ESCALA_ENTRADA_CONTENIDO` | 0,55 / 0,7 | Escala del contenido que se va / del que llega |
 | `FRACCION_RETRASO_FLORECER` / `DURACION_ENTRADA_CONTENIDO_MS` | 0,32 / 220 ms | Cuándo y cuánto tarda en aparecer el contenido nuevo |
 | `DESPLAZAMIENTO_ENTRADA_PX` | 14 px | Entrada lateral al deslizar |
+| `DURACION_CAMBIO_COLOR_MS` / `DURACION_ASENTAR_COLOR_MS` | 650 / 900 ms | Liquid Glass: el color de la canción nueva entra cruzándose con el anterior / se asienta tras el destello |
+| `ALCANCE_LUZ_CAPSULA_PX` / `ALCANCE_LUZ_TARJETA_PX` | 46 / 130 px | Hasta dónde llega la luz del canto desde el puntero |
+| `DURACION_ENCENDER_LUZ_MS` / `DURACION_APAGAR_LUZ_MS` | 220 / 520 ms | La luz se enciende al llegar el puntero y se apaga al irse |
+| `DIFERENCIA_MAXIMA_RELLENO` | 22 | Por debajo de esta diferencia media por píxel, la "carátula" es el logo del navegador |
+| `INTENSIDAD_DESTELLO_TINTE` | 1,55 | Cuánto más intenso llega el color nuevo antes de asentarse |
+| `DURACION_TINTE_MS` | 420 ms | El tinte se desvanece al no haber música |
 | `ESCALA_CAMBIO_BURBUJA` / `DURACION_CAMBIO_BURBUJA_MS` | 0,25 / 140 ms | El círculo se encoge, cambia y vuelve a crecer |
 | `OPACIDAD_ACTUAL_ASOMO` / `ESCALA_ACTUAL_ASOMO` | 0,35 / 0,5 | La vista actual convertida en círculo al asomarse |
 | `DURACION_SALIDA_ASOMO_MS` | 220 ms | Al confirmar el asomo, el círculo de la vista anterior desaparece |

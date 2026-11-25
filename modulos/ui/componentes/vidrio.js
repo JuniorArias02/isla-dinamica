@@ -23,7 +23,7 @@
  * copia propia y se recorta con el shader.
  *
  * El tinte, el borde de luz y el brillo los pone el CSS del actor que lo contiene
- * (sección "Liquid Glass" de stylesheet.css), por encima de este fondo.
+ * (recursos/estilos/cristal.css), por encima de este fondo.
  */
 
 import Clutter from 'gi://Clutter';
@@ -162,22 +162,45 @@ class Vidrio extends St.Widget {
     }
 
     /**
+     * Lo que pinta es solo su caja: la capa interior, más grande (margen del desenfoque),
+     * queda recortada. Sin esto, el shader recibiría la imagen con el margen incluido y el
+     * recorte redondeado quedaría desplazado (y dejaría ver lo de debajo).
+     */
+    vfunc_get_paint_volume(volumen) {
+        return volumen.set_from_allocation(this);
+    }
+
+    /**
      * La copia se coloca para que coincida con la pantalla: lo que se ve a través
      * del vidrio es justo lo que hay detrás. Se calcula durante la asignación de
      * tamaño (no pide otra asignación).
      */
     vfunc_allocate(caja) {
         this.set_allocation(caja);
+        const ancho = caja.get_width();
+        const alto = caja.get_height();
+        const [x, y] = this.get_transformed_position();
+
+        // La capa que se desenfoca es más grande que el vidrio: así el desenfoque del borde
+        // mezcla imagen real y no "nada" (que oscurecería el canto, sobre todo en la cápsula,
+        // que es muy baja). El recorte del vidrio y el shader dejan ver solo su tamaño.
+        // El margen no sale de la pantalla: lo de fuera no se dibuja y descuadraría la imagen
+        // (la isla está pegada al borde de arriba).
+        const margen = (espacio) => Math.max(0, Math.min(RADIO_DESENFOQUE_VIDRIO, Math.floor(espacio)));
+        const izquierda = margen(x);
+        const arriba = margen(y);
+        const derecha = margen(global.stage.width - (x + ancho));
+        const abajo = margen(global.stage.height - (y + alto));
         const interior = new Clutter.ActorBox();
-        interior.set_size(caja.get_width(), caja.get_height());
+        interior.set_origin(-izquierda, -arriba);
+        interior.set_size(ancho + izquierda + derecha, alto + arriba + abajo);
         this._interior.allocate(interior);
 
-        const [x, y] = this.get_transformed_position();
         const escritorio = new Clutter.ActorBox();
-        escritorio.set_origin(Math.round(-x), Math.round(-y));
+        escritorio.set_origin(Math.round(izquierda - x), Math.round(arriba - y));
         escritorio.set_size(global.stage.width, global.stage.height);
         this._escritorio.allocate(escritorio);
-        this._cristal.establecer({ancho: caja.get_width(), alto: caja.get_height(), radio: this._radio});
+        this._cristal.establecer({ancho, alto, radio: this._radio});
     }
 
     // ───────────────────────── Ventanas (solo la isla abierta) ─────────────────────────

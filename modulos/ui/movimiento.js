@@ -24,6 +24,7 @@
 
 import Clutter from 'gi://Clutter';
 import Shell from 'gi://Shell';
+import St from 'gi://St';
 
 import {
     USAR_RESORTE_FISICO,
@@ -67,6 +68,36 @@ export function animar(actor, propiedades) {
  */
 export function animarPropiedad(actor, propiedad, valor, parametros) {
     actor.ease_property(propiedad, valor, {...parametros, animationRequired: animacionObligatoria()});
+}
+
+/**
+ * Anima un valor cualquiera de 0 a 1 (ej. mezclar dos colores), para lo que no es una
+ * propiedad de un actor. Sigue el reloj de dibujado del actor y, como animar(), respeta
+ * el ajuste "Animaciones siempre": con las animaciones apagadas, salta al final.
+ *
+ * @param {Clutter.Actor} actor - Actor al que pertenece (marca el ritmo de los fotogramas).
+ * @param {object} opciones
+ * @param {number} opciones.duracion - Milisegundos.
+ * @param {Function} opciones.alCambiar - Recibe el avance (0–1, ya con la curva) en cada fotograma.
+ * @param {Clutter.AnimationMode} [opciones.modo=EASE_IN_OUT_QUAD]
+ * @param {Function} [opciones.alTerminar]
+ * @returns {Clutter.Timeline|null} Para detenerla (stop()) si llega otra; null si fue instantánea.
+ */
+export function animarValor(actor, {duracion, alCambiar, modo = Clutter.AnimationMode.EASE_IN_OUT_QUAD, alTerminar}) {
+    const conAnimacion = animacionObligatoria() || St.Settings.get().enable_animations;
+    if (!conAnimacion || duracion <= 0 || !actor.mapped) {
+        alCambiar(1);
+        alTerminar?.();
+        return null;
+    }
+    const linea = new Clutter.Timeline({actor, duration: duracion, progress_mode: modo});
+    linea.connect('new-frame', () => alCambiar(linea.get_progress()));
+    linea.connect('completed', () => {
+        alCambiar(1);
+        alTerminar?.();
+    });
+    linea.start();
+    return linea;
 }
 
 // ───────────────────────── Resortes ─────────────────────────

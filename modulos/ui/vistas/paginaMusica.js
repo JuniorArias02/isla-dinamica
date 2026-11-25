@@ -23,6 +23,7 @@ import St from 'gi://St';
 import {INTERVALO_PROGRESO_MS, TIPOS_PISTA} from '../../constantes.js';
 import {registrarDepuracion, protegido} from '../../registro.js';
 import {ICONOS, iconoDeAplicacion, iconoDeAppDeAudio} from '../iconos.js';
+import {colorDeAcento} from '../estilos/tinte.js';
 import {deslizarEntrada, latir, detenerLatido, agregarEfectoPulsacion} from '../animaciones.js';
 import {Caratula} from '../componentes/caratula.js';
 import {crearEsqueleto} from '../componentes/esqueleto.js';
@@ -187,7 +188,8 @@ class PaginaMusica extends St.BoxLayout {
         this._artista.visible = !cargando && Boolean(this._artista.text);
         this._esqueletoTitulo.visible = cargando;
         this._esqueletoArtista.visible = cargando;
-        this._nombreApp.text = pista.aplicacion;
+        // La canción espera mientras suena un audio de chat en el mismo navegador.
+        this._nombreApp.text = pista.enEspera ? `${pista.aplicacion} · en espera mientras suena el audio` : pista.aplicacion;
         this._iconoApp.gicon = iconoDeAplicacion(pista.aplicacion, pista.entradaEscritorio);
         this._iconoApp.visible = Boolean(this._iconoApp.gicon);
         // En el audio, la app ya está en el título y en el logo.
@@ -199,6 +201,10 @@ class PaginaMusica extends St.BoxLayout {
         // Mientras carga no suena nada: sin onda.
         this._onda.visible = !cargando;
         this._onda.establecerActiva(pista.reproduciendo && !cargando && this._activa);
+        // Con el color de la canción (si el estilo lo usa, la pista lo trae): onda y barra.
+        const acento = audio ? null : colorDeAcento(pista.colorPortada ?? null);
+        this._onda.establecerColor(acento);
+        this._progreso.establecerColor(acento);
         this._botonAlternar.establecerIcono(pista.reproduciendo ? ICONOS.PAUSA : ICONOS.REPRODUCIR);
         this._botonAlternar.establecerHabilitado(pista.puedeAlternar);
         this._botonAnterior.establecerHabilitado(pista.puedeAnterior);

@@ -87,6 +87,8 @@ extension.js = raíz de composición: crea las piezas y las conecta. No tiene l�
     │   ├── calendario.js         MonitorCalendario: eventos del calendario de GNOME
     │   ├── grabacion.js          MonitorGrabacion: grabación de pantalla (contador, detener, abrir herramientas)
     │   ├── reconocedorAudio.js   Puro: ¿lo que suena es música o un audio de un chat (nota de voz)?
+    │   ├── colorPortada.js       Color dominante de la carátula y reconocer el logo de relleno (lectura asíncrona + cálculo puro)
+    │   ├── iconoApp.js           Icono de una app como imagen (para reconocer el logo que publica el navegador)
     │   ├── ventanas.js           Trae al frente la ventana de un proceso (reproductores sin Raise)
     │   ├── calendarioFechas.js   Puro: cuadrícula del mes (igual que GNOME), eventos de todo el día
     │   ├── osd.js                CapturadorOsd: volumen y brillo en la isla
@@ -106,6 +108,10 @@ extension.js = raíz de composición: crea las piezas y las conecta. No tiene l�
         ├── menuContextual.js     MenuContextual: menú del clic derecho (PopupMenu de GNOME)
         ├── botonPanel.js         BotonPanel: elemento del panel (Pildora + Burbuja, y el Asomo al arrastrar)
         ├── logicaAsomo.js        Cuentas del gesto de asomarse (progreso, confirmar o volver)
+        ├── estilos/
+        │   ├── estilos.js        Qué trae cada estilo (clase, hoja, vidrio, color de la portada)
+        │   ├── gestorEstilos.js  Carga las hojas y aplica el estilo elegido
+        │   └── tinte.js          Puro: el color de la carátula, ajustado para el tinte y el acento
         ├── iconos.js             Catálogo de iconos propios + icono a color de apps
         ├── movimiento.js         Motor de movimiento: animar(), resortes, entrada/salida de contenido
         ├── animaciones.js        Efectos sobre el motor (saltar, aplastar, aterrizar...)
@@ -115,6 +121,8 @@ extension.js = raíz de composición: crea las piezas y las conecta. No tiene l�
         │   ├── burbuja.js        Círculo con la actividad secundaria
         │   ├── asomo.js          Asomarse a la vista de al lado mientras se arrastra la cápsula
         │   ├── vidrio.js         Liquid Glass: lo de detrás, desenfocado, con esquinas redondeadas y canto refractado
+        │   ├── capaTinte.js      Liquid Glass: tinte con el color de la canción (se funde al cambiar)
+        │   ├── luzVidrio.js      Liquid Glass: el canto brilla cerca del puntero (shader propio)
         │   ├── anilloProgreso.js Aro (Cairo, animable) y AnilloProgreso
         │   ├── anilloBateria.js  IndicadorBateria: aro con colores de batería
         │   ├── caratula.js       Portada redondeada o circular (con estado "cargando")
@@ -290,9 +298,50 @@ soltar          [ ♪ Blank Space ∿ ]
 
 Deslizar con dos dedos en el touchpad sigue cambiando de vista directamente, con la morfosis de 4.3.1.
 
-### 4.3.3 Estilo: Liquid Glass o negro clásico
+### 4.3.3 Estilos: Liquid Glass o negro clásico
 
-El ajuste `estilo-isla` elige el aspecto. `IslaUI._aplicarEstilo` pone o quita la clase `isla-cristal` en las dos raíces (`BotonPanel` y `TarjetaFlotante`) y llama a su `establecerCristal()`, que muestra u oculta el vidrio de verdad. La sección "Liquid Glass" de `stylesheet.css` hace el resto. Cambia al instante.
+El ajuste `estilo-isla` elige el aspecto. Cada estilo es un **paquete** descrito en `ui/estilos/estilos.js` (solo datos):
+
+| Campo | Qué es | Liquid Glass | Negro clásico |
+| :--- | :--- | :--- | :--- |
+| `clase` | Clase CSS en las raíces (cápsula y tarjeta); todas las reglas del estilo cuelgan de ella | `isla-cristal` | — |
+| `hoja` | Su hoja de estilos, en `recursos/estilos/` | `cristal.css` | — (solo la base) |
+| `vidrio` | Muestra el vidrio de verdad | sí | no |
+| `colorDeLaPortada` | Se tiñe con el color de la carátula | sí | no |
+| `luzQueSigue` | El canto del vidrio brilla cerca del puntero | sí | no |
+
+* `stylesheet.css` es la **base**, que es también el negro clásico. Cada estilo añade encima su hoja.
+* `GestorEstilos` (`ui/estilos/gestorEstilos.js`, lo crea `IslaUI.montar`):
+  - carga las hojas de todos los estilos al empezar (`St.Theme.load_stylesheet`) y las quita en `disable()`. Como sus reglas cuelgan de la clase del estilo, tenerlas cargadas no cambia nada hasta aplicarlo. Si el usuario cambia el tema de GNOME, `Main.loadTheme` conserva las hojas cargadas por extensiones;
+  - `aplicar(estilo)`: cambia la clase en las raíces y llama a su `establecerVidrio()` y `establecerLuz()`;
+  - `adaptarVista(vista)`: lo que el estilo no usa no llega a la interfaz. Sin `colorDeLaPortada`, la pista llega sin `colorPortada` y nada se tiñe.
+* **Añadir un estilo:** su valor en `ESTILOS_ISLA` y en el esquema, su entrada en `estilos.js`, su hoja en `recursos/estilos/` (reglas bajo su clase) y su opción en `prefs.js`. La prueba `estilos.prueba.js` comprueba que cada valor tenga definición y hoja.
+
+#### Luz que sigue al puntero (Liquid Glass)
+
+Como el reflejo de iOS 26 al inclinar el teléfono, pero con el puntero: con el puntero encima de la isla, el canto del vidrio brilla cerca de él, con un halo muy suave.
+
+* `LuzVidrio` (`componentes/luzVidrio.js`): una capa transparente **encima** de la isla (no recibe clics) que dibuja un shader propio (`EfectoLuz`, `Shell.GLSLEffect`). El shader calcula la forma redondeada (como el del vidrio), ilumina la franja del canto (`ANCHO_CANTO_LUZ_PX`) según la distancia al puntero (`ALCANCE_LUZ_CAPSULA_PX` / `ALCANCE_LUZ_TARJETA_PX`) y suma un halo (`INTENSIDAD_HALO_LUZ`).
+* Hay una en la cápsula y otra en el círculo (en `RaizPanel`, delante de la fila) y otra en la tarjeta (su último hijo).
+* `BotonPanel` y `TarjetaFlotante` escuchan `motion-event` (sube desde sus hijos) y le pasan la posición; con `notify::hover` en falso, la apagan. Solo eventos del puntero: nada de sondeo.
+* Se enciende en `DURACION_ENCENDER_LUZ_MS` y se apaga en `DURACION_APAGAR_LUZ_MS`, con `animarValor` (respeta "Animaciones siempre").
+
+#### Color de la canción (Liquid Glass)
+
+1. **Servicio** (`servicios/colorPortada.js`): `ExtractorColor` lee la carátula en pequeño (`LADO_MUESTRA_COLOR_PX`), sin bloquear (lectura y decodificación asíncronas), y `colorDominante()` (puro) saca el color que más manda: los vivos pesan más que grises, blancos y negros. Se guarda por URL (`MAXIMO_COLORES_EN_CACHE`). `MonitorMultimedia` lo añade a la pista como `colorPortada`. Llega un instante después de la canción: al terminar la lectura se vuelve a avisar.
+   - **Logo de relleno:** al pasar de canción, Brave (y otros Chromium) publica un momento **su logo** como carátula, mientras consigue la portada; también en webs sin portada. Siempre es la misma imagen: el icono de la app sobre negro. `esMismaImagen()` (puro) la compara, en miniatura, con el icono del reproductor (`iconoApp.js`, que extension.js pasa al servicio para que este se pueda probar fuera del Shell). Si coincide, no da color y no se muestra como carátula.
+   - **Mientras tanto** (leyéndose, o con el logo), la pista lleva el **último color conocido**: así el cambio va directo del color anterior al nuevo, sin destello del logo ni bajar a "sin color".
+2. **Ajuste del color** (`ui/estilos/tinte.js`, puro): `colorDeTinte()` lo lleva a una luz y saturación que siempre se ven bien sobre el vidrio; `colorDeAcento()`, a uno más claro y vivo para la onda y la barra. Un gris se queda gris.
+3. **Dónde se ve:**
+   - `CapaTinte` (`componentes/capaTinte.js`): capa entre el vidrio y el contenido, con un degradado del color (`OPACIDAD_TINTE_ARRIBA` → `OPACIDAD_TINTE_ABAJO`). Tiene **dos láminas** para que el cambio de canción sea suave:
+     1. **cruce:** la lámina libre toma el color nuevo y aparece mientras la anterior se va, sin pasar por "sin color" (`DURACION_CAMBIO_COLOR_MS`);
+     2. **destello:** la lámina nueva está pintada `INTENSIDAD_DESTELLO_TINTE` veces más intensa, así que llega con un fogonazo de color;
+     3. **asentado:** su opacidad baja despacio hasta dejarla en la intensidad normal (`DURACION_ASENTAR_COLOR_MS`).
+     Sin música, se desvanece (`DURACION_TINTE_MS`).
+   - Hay una en la cápsula y otra en el círculo (en `RaizPanel`, junto a su vidrio), que se tiñen cuando muestran la música. Otra en la tarjeta, que se tiñe solo con la página Música a la vista (`IslaUI._actualizarTinteTarjeta`).
+   - La onda (cápsula y página) y el relleno de la barra de progreso toman el color de acento. Al cambiar de canción, el color se **mezcla** del anterior al nuevo (`mezclarColores`, de rojo a azul pasa por violeta) con `animarValor` de `movimiento.js`.
+   - Todo usa el motor de movimiento, no las transiciones CSS de St: esas se apagan con las animaciones del sistema desactivadas, y la isla respeta su propio ajuste "Animaciones siempre".
+   - Los audios de chat no tienen carátula: no se tiñen.
 
 **El vidrio (`componentes/vidrio.js`)** muestra, desenfocado, lo que hay detrás de la isla:
 
@@ -300,7 +349,9 @@ El ajuste `estilo-isla` elige el aspecto. `IslaUI._aplicarEstilo` pone o quita l
    - el fondo de pantalla: `Clutter.Clone` de `Main.layoutManager._backgroundGroup`;
    - en la isla abierta (`conVentanas`), además cada ventana del área de trabajo: un `Clutter.Clone` por `MetaWindowActor`, con un `BindConstraint` que lo mantiene en su sitio. Se rehacen al mostrarse la tarjeta y con `restacked`, `window-created` y el cambio de área de trabajo; al ocultarse, se quitan.
    - GNOME **no deja copiar `global.window_group` entero**: su pintado especial deja la copia vacía. Por eso se copian el fondo y las ventanas por separado.
-2. **Desenfoque**: `Shell.BlurEffect` en modo ACTOR sobre una capa interior recortada al tamaño de la isla (así solo se desenfoca ese trozo). El brillo baja un poco (`BRILLO_VIDRIO`; en la isla abierta, `BRILLO_VIDRIO_TARJETA`) para que el texto blanco se lea.
+2. **Desenfoque**: `Shell.BlurEffect` en modo ACTOR sobre una capa interior apenas más grande que la isla (así solo se desenfoca ese trozo).
+   - El margen (`RADIO_DESENFOQUE_VIDRIO`) hace que el desenfoque del borde mezcle imagen real y no "nada": sin él, el canto se oscurecía y la cápsula, que es muy baja, parecía sombreada abajo.
+   - El margen nunca sale de la pantalla: lo de fuera no se dibuja y descuadraba la imagen. Como la isla está pegada al borde de arriba, dejaba ver lo de debajo en esa franja. El brillo baja un poco (`BRILLO_VIDRIO`; en la isla abierta, `BRILLO_VIDRIO_TARJETA`) para que el texto blanco se lea.
 3. **Shader propio (`EfectoCristal`, `Shell.GLSLEffect`)**: recorta las esquinas redondeadas con borde suave y, en los últimos `REFRACCION_VIDRIO_PX` del canto, toma la imagen más hacia dentro, como una lente. `Shell.BlurEffect` solo desenfoca rectángulos y Mutter 18 no tiene recortes redondeados: por eso hace falta el shader.
 
 **Encima del vidrio**, el CSS pone el tinte (un velo blanco más claro arriba), el borde de luz y el brillo especular (`box-shadow: inset`):
@@ -312,7 +363,7 @@ El ajuste `estilo-isla` elige el aspecto. `IslaUI._aplicarEstilo` pone o quita l
 | Asomo (arrastrar la cápsula) | Hijo de cada `VentanaAsomo` | La capa `isla-asomo-tinte`, encima |
 
 * **Coste:** el vidrio de la cápsula solo copia el fondo, que casi nunca cambia, así que su desenfoque se reutiliza. El de la isla abierta se rehace cuando cambia lo de detrás (por ejemplo, con un vídeo detrás), pero solo mientras está abierta.
-* **Botones de color** (contestar, colgar, reproducir, iniciar...): conservan su color y solo ganan el brillo especular. St pinta un degradado *en lugar* del color de fondo, así que un degradado en una regla general taparía los colores de estado.
+* **Botones de vidrio:** reproducir/pausa y los chips son vidrio claro; contestar, ir a la llamada y el audio, vidrio verde; colgar y detener, rojo; el temporizador, naranja. Las cajas y filas con colores de estado (modo No molestar activo, cargador...) solo ganan el brillo especular. St pinta un degradado *en lugar* del color de fondo, así que cada estado con color (activo, desactivado, el botón del audio) tiene su propia regla con más especificidad.
 * Con "Negro clásico" los vidrios se ocultan (no se pintan ni gastan nada) y todo vuelve al negro sólido.
 
 ### 4.4 Qué se muestra en cada estado
@@ -400,7 +451,7 @@ La isla ocupa el lugar del reloj y muestra la hora. Con el ajuste `ocultar-reloj
     - el servicio avisa por separado (`alCambiarPista` para la música, `alCambiarAudio` para el audio; reproductores `activo` y `activoAudio`);
     - en el controlador es `ACTIVIDADES.AUDIO` (`actualizarAudio`, `vista.audio`), primera en `ORDEN_ACTIVIDADES` mientras suena y con su lugar al deslizar (`VISTAS_COMPACTAS`: hora → música → audio → temporizador);
     - en la isla abierta tiene su propia página, `PAGINAS.AUDIO`: otra instancia de `PaginaMusica` con las acciones `audio` (que van a `activoAudio`).
-  - En Brave la música y el audio salen por el **mismo** reproductor (Brave publica solo lo que suena ahora). Cuando pasa de una canción a un audio, la música no entra en la espera de "cargando": se quita y vuelve cuando termina el audio.
+  - En Brave la música y el audio salen por el **mismo** reproductor: Brave publica solo lo que suena ahora. Cuando pasa de una canción a un audio, la canción no terminó, solo dejó de anunciarse. El servicio la **conserva en espera** (`enEspera: true`, sin reproducir y sin controles, que ahora irían al audio), y la página de Música sigue con "en espera mientras suena el audio". Cuando termina el audio y Brave vuelve a anunciar la canción, recupera sus controles.
 * **Posición:** MPRIS no notifica el avance. Se consulta `Position` **solo** con la isla abierta en la página de música y sonando.
 * **Ir a donde suena** (tocar la portada o el título): si el reproductor acepta `Raise` (`CanRaise`), se le pide. Brave responde `CanRaise = false`: entonces `extension.js` obtiene el proceso dueño del nombre en el bus (`org.freedesktop.DBus.GetConnectionUnixProcessID`) y `ventanas.js` activa una de sus ventanas, prefiriendo la que tiene la canción en el título (en YouTube, el de la pestaña); si no, la última usada.
 * **Comandos:** `PlayPause`, `Next`, `Previous`, `Raise` y `SetPosition` (clic en la barra; solo si `CanSeek` y la pista tiene `mpris:trackid`).

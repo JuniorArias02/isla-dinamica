@@ -55,6 +55,7 @@ import {
 import {ControladorIsla} from './modulos/controlador.js';
 import {MonitorBluetooth, EVENTOS_BLUETOOTH} from './modulos/servicios/bluetooth.js';
 import {MonitorMultimedia} from './modulos/servicios/mpris.js';
+import {cargarIconoDeApp} from './modulos/servicios/iconoApp.js';
 import {CapturadorNotificaciones} from './modulos/servicios/notificaciones/capturador.js';
 import {MonitorReloj} from './modulos/servicios/reloj.js';
 import {MonitorAirPods} from './modulos/servicios/airpods/monitor.js';
@@ -264,7 +265,7 @@ export default class ExtensionIslaDinamica extends Extension {
                 reanudar: protegido('temporizador: reanudar', () => this._temporizador?.reanudar()),
                 cancelar: protegido('temporizador: cancelar', () => this._temporizador?.cancelar()),
             },
-        });
+        }, {rutaExtension: this.path});
 
         // Capa 2: controlador (máquina de estados).
         this._controlador = new ControladorIsla(this._isla);
@@ -272,7 +273,8 @@ export default class ExtensionIslaDinamica extends Extension {
         // Capa 3: servicios.
         this._multimedia = new MonitorMultimedia(
             protegido('multimedia → controlador', pista => this._controlador?.actualizarPista(pista)),
-            protegido('audio → controlador', audio => this._controlador?.actualizarAudio(audio)));
+            protegido('audio → controlador', audio => this._controlador?.actualizarAudio(audio)),
+            {cargarIcono: cargarIconoDeApp});
         this._bluetooth = new MonitorBluetooth(
             protegido('bluetooth → controlador', (tipo, dispositivo) => this._alEventoBluetooth(tipo, dispositivo)));
         /** @type {Map<string, {cantidad: number, ultimoMs: number}>} chat → mensajes recientes */

@@ -85,7 +85,7 @@ ejecutar('Multimedia', async () => {
         monitor.destruir();
     });
 
-    await prueba('un audio de WhatsApp va aparte de la música y, al terminar, la canción vuelve sin "cargando"', () => {
+    await prueba('un audio de WhatsApp va aparte y la canción se queda en espera (no desaparece); al terminar, vuelve', () => {
         const musica = [];
         const audios = [];
         const monitor = new MonitorMultimedia(pista => musica.push(pista), audio => audios.push(audio));
@@ -100,13 +100,17 @@ ejecutar('Multimedia', async () => {
         reproductor.obtenerPista = () => ({...obtenerCancion(), titulo: 'web.whatsapp.com', tipo: 'audio'});
         monitor._actualizarActivo();
         igual(audios.at(-1).titulo, 'web.whatsapp.com', 'el audio llega por su lado');
-        igual(musica.at(-1), null, 'la música se quita al instante (no queda el esqueleto de "cargando")');
+        const enEspera = musica.at(-1);
+        verdadero(enEspera?.titulo === 'Canción A' && enEspera.enEspera && !enEspera.cargando,
+            'la canción sigue, en espera (no desaparece ni muestra el esqueleto de "cargando")');
+        verdadero(!enEspera.puedeAlternar && !enEspera.puedeSiguiente, 'sin controles: ahora irían al audio');
         igual(monitor._idEspera, 0);
-        verdadero(monitor.activoAudio === reproductor && monitor.activo === null, 'los controles del audio van a su reproductor');
+        verdadero(monitor.activoAudio === reproductor, 'los controles del audio van a su reproductor');
 
         reproductor.obtenerPista = obtenerCancion;
         monitor._actualizarActivo();
         igual(musica.at(-1).titulo, 'Canción A');
+        verdadero(!musica.at(-1).enEspera, 'al terminar el audio, la canción vuelve con sus controles');
         igual(audios.at(-1), null);
         monitor.destruir();
     });

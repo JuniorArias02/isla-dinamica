@@ -4,7 +4,7 @@
 /**
  * AlertaIndicador — volumen / brillo en la isla (reemplaza el recuadro de GNOME).
  *
- *   [🔊]  ━━━━━━━━━━━━━━━━──────────  65
+ *   [vol] ━━━━━━━━━━━━━━━━──────────  65
  *
  * La barra se desliza suave a cada pulsación de tecla. Con el volumen
  * amplificado (por encima de 100 %), la parte extra se pinta en naranja.

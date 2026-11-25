@@ -39,14 +39,15 @@ echo "$TITULO"
 env -u WAYLAND_DISPLAY -u DISPLAY \
     XDG_CONFIG_HOME="$TEMPORAL/cfg" XDG_DATA_HOME="$TEMPORAL/data" XDG_CACHE_HOME="$TEMPORAL/cache" \
     SALIDA="$TEMPORAL/shell.log" \
-    timeout 120 dbus-run-session -- bash -c '
+    timeout 200 dbus-run-session -- bash -c '
         gsettings set org.gnome.shell disable-user-extensions false
         gsettings set org.gnome.shell enabled-extensions "[\"isla-dinamica@juniorarias02\", \"prueba-isla@local\"]"
         # Como en equipos con las animaciones del sistema apagadas.
         gsettings set org.gnome.desktop.interface enable-animations false
         gnome-shell --headless --wayland --no-x11 --virtual-monitor 1280x720 > "$SALIDA" 2>&1 &
         PID=$!
-        for _ in $(seq 1 60); do
+        # La prueba completa tarda algo más de un minuto: se espera hasta tres.
+        for _ in $(seq 1 180); do
             sleep 1
             grep -q "\[prueba\] FIN" "$SALIDA" && break
         done

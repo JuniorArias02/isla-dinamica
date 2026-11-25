@@ -20,48 +20,68 @@ import St from 'gi://St';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
 import {ajuste, AJUSTES} from '../ajustes.js';
-import {ACTIVIDADES} from '../constantes.js';
+import {ACTIVIDADES, ALCANCE_LUZ_CAPSULA_PX} from '../constantes.js';
 import {Pildora} from './componentes/pildora.js';
 import {Burbuja} from './componentes/burbuja.js';
 import {Asomo, FASES_ASOMO} from './componentes/asomo.js';
 import {Vidrio} from './componentes/vidrio.js';
+import {CapaTinte} from './componentes/capaTinte.js';
+import {LuzVidrio} from './componentes/luzVidrio.js';
 
-/** Lo que el vidrio copia de la cápsula y del círculo para moverse igual que ellos. */
+/** Lo que las capas copian de la cápsula y del círculo para moverse igual que ellos. */
 const PROPIEDADES_COMPARTIDAS = ['translation-x', 'translation-y', 'scale-x', 'scale-y', 'pivot-point'];
 
 /**
- * Raíz del botón: la fila (cápsula + círculo) y el asomo, superpuestos. Con Liquid Glass,
- * detrás de la cápsula y del círculo va un Vidrio de su mismo tamaño y posición, que se
- * calcula aquí, durante la asignación de tamaño (no pide otra asignación).
+ * Raíz del botón: la fila (cápsula + círculo) y el asomo, superpuestos. La cápsula y
+ * el círculo llevan sus capas del estilo Liquid Glass, con su mismo tamaño y posición:
+ * detrás, el vidrio de verdad y el tinte de la canción; delante, la luz que sigue al
+ * puntero. Su lugar se calcula aquí, durante la asignación de tamaño (no pide otra
+ * asignación).
  */
 const RaizPanel = GObject.registerClass(
 class RaizPanel extends St.Widget {
     _init({caja, pildora, burbuja, asomo}) {
         super._init({layout_manager: new Clutter.BinLayout(), x_expand: true, y_expand: true});
         this._caja = caja;
-        this.vidrios = [
-            {vidrio: new Vidrio(), fuente: pildora},
-            {vidrio: new Vidrio(), fuente: burbuja},
-        ];
-        for (const {vidrio, fuente} of this.vidrios) {
+        /** Capas de la cápsula [0] y del círculo [1]. */
+        this.capas = [pildora, burbuja].map(fuente => ({
+            fuente,
+            vidrio: new Vidrio(),
+            tinte: new CapaTinte(),
+            luz: new LuzVidrio({radio: 999, alcance: ALCANCE_LUZ_CAPSULA_PX}),
+        }));
+        // Detrás de la fila: vidrio y tinte.
+        for (const {fuente, vidrio, tinte} of this.capas) {
             vidrio.visible = false;
-            for (const propiedad of PROPIEDADES_COMPARTIDAS)
-                fuente.bind_property(propiedad, vidrio, propiedad, GObject.BindingFlags.SYNC_CREATE);
-            this.add_child(vidrio);
+            for (const capa of [vidrio, tinte])
+                this._agregarCapa(capa, fuente);
         }
-        // El círculo aparece y desaparece con un fundido: su vidrio, también.
-        burbuja.bind_property('opacity', this.vidrios[1].vidrio, 'opacity', GObject.BindingFlags.SYNC_CREATE);
         this.add_child(caja);
+        // Delante de la fila: la luz (no recibe clics).
+        for (const {fuente, luz} of this.capas)
+            this._agregarCapa(luz, fuente);
+        // El círculo aparece y desaparece con un fundido: su vidrio y su luz, también.
+        for (const capa of [this.capas[1].vidrio, this.capas[1].luz])
+            burbuja.bind_property('opacity', capa, 'opacity', GObject.BindingFlags.SYNC_CREATE);
         this.add_child(asomo);
+    }
+
+    /** Añade una capa que se mueve igual que su fuente (cápsula o círculo). */
+    _agregarCapa(capa, fuente) {
+        for (const propiedad of PROPIEDADES_COMPARTIDAS)
+            fuente.bind_property(propiedad, capa, propiedad, GObject.BindingFlags.SYNC_CREATE);
+        this.add_child(capa);
     }
 
     vfunc_allocate(caja) {
         super.vfunc_allocate(caja);
         const origen = this._caja.get_allocation_box();
-        for (const {vidrio, fuente} of this.vidrios) {
+        for (const {fuente, vidrio, tinte, luz} of this.capas) {
             const lugar = fuente.get_allocation_box();
             lugar.set_origin(origen.x1 + lugar.x1, origen.y1 + lugar.y1);
             vidrio.allocate(lugar);
+            tinte.allocate(lugar);
+            luz.allocate(lugar);
         }
     }
 });
@@ -94,9 +114,31 @@ class BotonPanel extends PanelMenu.Button {
         this.add_child(this._raiz);
 
         this._cristal = false;
+        this._luz = false;
         const sincronizar = () => this._sincronizarVidrios();
         caja.connect('notify::visible', sincronizar);
         this.burbuja.connect('notify::visible', sincronizar);
+
+        // Luz que sigue al puntero: se mueve con él y se apaga al salir de la isla.
+        this.connect('motion-event', (_actor, evento) => {
+            const [x, y] = evento.get_coords();
+            for (const {luz} of this._raiz.capas)
+                luz.seguir(x, y);
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this.connect('notify::hover', () => {
+            if (!this.hover)
+                this._raiz.capas.forEach(({luz}) => luz.apagar());
+        });
+    }
+
+    /**
+     * Liquid Glass: la luz del canto que sigue al puntero.
+     * @param {boolean} activa
+     */
+    establecerLuz(activa) {
+        this._luz = activa;
+        this._sincronizarVidrios();
     }
 
     /**
@@ -104,16 +146,21 @@ class BotonPanel extends PanelMenu.Button {
      * círculo y de las ventanas del asomo.
      * @param {boolean} activo
      */
-    establecerCristal(activo) {
+    establecerVidrio(activo) {
         this._cristal = activo;
-        this._asomo.establecerCristal(activo);
+        this._asomo.establecerVidrio(activo);
         this._sincronizarVidrios();
     }
 
     _sincronizarVidrios() {
-        const [vidrioPildora, vidrioBurbuja] = this._raiz.vidrios.map(({vidrio}) => vidrio);
-        vidrioPildora.visible = this._cristal && this._caja.visible;
-        vidrioBurbuja.visible = this._cristal && this._caja.visible && this.burbuja.visible;
+        const [pildora, burbuja] = this._raiz.capas;
+        pildora.vidrio.visible = this._cristal && this._caja.visible;
+        burbuja.vidrio.visible = this._cristal && this._caja.visible && this.burbuja.visible;
+        // El tinte solo se ve con la fila a la vista (en el asomo no se tiñe).
+        pildora.tinte.visible = this._caja.visible;
+        burbuja.tinte.visible = this._caja.visible && this.burbuja.visible;
+        pildora.luz.visible = this._luz && this._caja.visible;
+        burbuja.luz.visible = this._luz && this._caja.visible && this.burbuja.visible;
     }
 
     // ───────────────────────── Asomarse a la vista de al lado ─────────────────────────
@@ -224,5 +271,11 @@ class BotonPanel extends PanelMenu.Button {
             privacidadVisible = {...privacidadVisible, microfono: false};
         this.pildora.establecerPrivacidad(privacidadVisible);
         this.burbuja.actualizar({tipo: secundaria, dispositivo: dispositivos[0] ?? null, pista, audio, temporizador});
+
+        // Color de la canción (si el estilo lo usa, la pista lo trae): en la cápsula y en el
+        // círculo, cuando muestran la música. Mientras carga la siguiente, se mantiene.
+        const colorMusica = pista?.colorPortada ?? null;
+        this._raiz.capas[0].tinte.establecerColor(principal === ACTIVIDADES.MUSICA ? colorMusica : null);
+        this._raiz.capas[1].tinte.establecerColor(secundaria === ACTIVIDADES.MUSICA ? colorMusica : null);
     }
 });

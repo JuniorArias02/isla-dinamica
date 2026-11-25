@@ -54,7 +54,9 @@ servicios/  ──datos──▶  controlador.js  ──vista──▶  ui/
 | Una animación que se repite | `ui/animaciones.js` |
 | Un gesto del usuario | `ui/interaccion.js` |
 | Un componente que necesita el arrastre o desplazamiento **vertical** para sí (ej. una rueda) | Clase CSS `isla-captura-vertical` (la isla no se cerrará al arrastrar sobre él) y devolver `EVENT_STOP` en su `scroll-event` vertical |
-| Un fondo o botón **nuevo** | Comprobarlo con los dos estilos (Liquid Glass y negro clásico). Si es un chip o botón, añadirlo a la lista del brillo especular de la sección "Liquid Glass" del CSS; no ponerle un degradado general (taparía sus colores de estado) |
+| Un **estilo** nuevo (otro diseño) | Seguir "Añadir un estilo" (ARQUITECTURA, 4.3.3): entrada en `ui/estilos/estilos.js`, hoja propia en `recursos/estilos/` con todas sus reglas bajo su clase, valor en el esquema y opción en `prefs.js`. Nada del estilo en `stylesheet.css` (es la base) |
+| Algo que solo tiene sentido en un estilo (ej. teñirse con la carátula) | Un campo en su definición (`estilos.js`) y `GestorEstilos.adaptarVista` para que, sin él, no llegue a la interfaz. Nada de `if (estilo === ...)` repartidos por los componentes |
+| Un fondo o botón **nuevo** | Comprobarlo con los dos estilos (Liquid Glass y negro clásico). Si es un botón, darle vidrio en `recursos/estilos/cristal.css` (claro, verde, rojo o naranja). Si tiene estados con color (activo, desactivado), cada estado necesita su propia regla con más especificidad: St pinta el degradado en lugar del color de fondo |
 | Un botón propio dentro de una **alerta** (ej. contestar una llamada) | Clase CSS `isla-captura-clic`: el clic en él no cuenta además como toque en la alerta |
 | Un tiempo, tamaño o umbral | `constantes.js`. **Nunca** un número suelto en el código |
 | Una **opción que el usuario pueda cambiar** | 1) `<key>` en `schemas/…gschema.xml` · 2) clave y valor por defecto en `ajustes.js` (deben coincidir) · 3) fila en `prefs.js` · 4) leerla con `ajuste(AJUSTES.X)` en el momento de usarla · 5) `glib-compile-schemas schemas/` |
@@ -111,7 +113,7 @@ Las extensiones corren **en el mismo hilo que el compositor**. Un error o un buc
    - `animarConResorte(actor, props, {resorte})` para todo lo que **cambia de forma o posición** (isla, cápsula, círculo, páginas, botones).
    - `entrarConDesenfoque` / `salirConDesenfoque` para contenido que aparece o desaparece dentro de la isla.
 
-   Así todas respetan el ajuste `forzar-animaciones`. Una llamada directa a `ease()` sería **instantánea** en equipos con las animaciones del sistema desactivadas o con *Reducir movimiento*.
+   Así todas respetan el ajuste `forzar-animaciones`. Para animar algo que no es una propiedad de un actor (ej. mezclar dos colores en cada fotograma), `animarValor(actor, {duracion, alCambiar})`. No usar `transition-duration` del CSS de St: se apaga con las animaciones del sistema desactivadas. Una llamada directa a `ease()` sería **instantánea** en equipos con las animaciones del sistema desactivadas o con *Reducir movimiento*.
 2. Nunca animar con temporizadores JS cuadro a cuadro.
 3. Los parámetros van en `constantes.js`: `RESORTES` (respuesta, amortiguación) y `DURACION_*`. Referencia:
    - Apertura de la isla: amortiguación 0,66–0,70 (se pasa ~5 % y rebota).

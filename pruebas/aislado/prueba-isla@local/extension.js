@@ -236,15 +236,41 @@ export default class PruebaIsla extends Extension {
         // Estilo: Liquid Glass por defecto; "Negro clásico" quita el vidrio al instante.
         const conVidrio = () => isla._isla._boton.has_style_class_name('isla-cristal') &&
             isla._isla._tarjeta.has_style_class_name('isla-cristal') &&
-            isla._isla._boton._raiz.vidrios[0].vidrio.visible && isla._isla._tarjeta._vidrio.visible;
+            isla._isla._boton._raiz.capas[0].vidrio.visible && isla._isla._tarjeta._vidrio.visible &&
+            isla._isla._boton._raiz.capas[0].luz.visible && isla._isla._tarjeta._luz.visible;
         const vidrioAlEmpezar = conVidrio();
         isla.getSettings().set_string('estilo-isla', 'clasico');
         await esperar(300);
         const sinVidrio = !isla._isla._boton.has_style_class_name('isla-cristal') &&
-            !isla._isla._boton._raiz.vidrios[0].vidrio.visible && !isla._isla._tarjeta._vidrio.visible;
+            !isla._isla._boton._raiz.capas[0].vidrio.visible && !isla._isla._tarjeta._vidrio.visible &&
+            !isla._isla._boton._raiz.capas[0].luz.visible && !isla._isla._tarjeta._luz.visible;
         isla.getSettings().set_string('estilo-isla', 'cristal');
         await esperar(300);
         comprobar(vidrioAlEmpezar && sinVidrio && conVidrio(), 'el estilo Liquid Glass se aplica por defecto y se puede cambiar a negro clásico');
+
+        // Luz que sigue al puntero: se enciende con el puntero encima de la cápsula y se apaga al salir.
+        const luzCapsula = isla._isla._boton._raiz.capas[0].luz;
+        const [luzX, luzY] = capsula.get_transformed_position();
+        raton.notify_absolute_motion(ahora(), luzX + 12, luzY + capsula.height / 2);
+        await esperar(500);
+        const encendida = luzCapsula._intensidad > 0.9;
+        raton.notify_absolute_motion(ahora(), 640, 500);
+        await esperar(900);
+        comprobar(encendida && luzCapsula._intensidad < 0.05, 'la luz del vidrio se enciende con el puntero encima y se apaga al salir');
+
+        // Color de la canción: con Liquid Glass la cápsula se tiñe; con negro clásico, no.
+        const tinteCapsula = isla._isla._boton._raiz.capas[0].tinte;
+        isla._controlador.establecerActividadPreferida('musica');
+        isla._controlador.actualizarPista({...pistaPrueba, reproduciendo: true, colorPortada: {r: 160, g: 100, b: 40}});
+        await esperar(900);
+        const teñida = tinteCapsula.color !== null;
+        isla.getSettings().set_string('estilo-isla', 'clasico');
+        await esperar(900);
+        const sinTinte = tinteCapsula.color === null;
+        isla.getSettings().set_string('estilo-isla', 'cristal');
+        isla._controlador.actualizarPista({...pistaPrueba, reproduciendo: true});
+        await esperar(900);
+        comprobar(teñida && sinTinte, 'con Liquid Glass la cápsula toma el color de la canción; con negro clásico, no');
 
         // Ajuste "Cambiar al instante" (el arrastre de la 1.0): sin asomo; al soltar cambia por el círculo.
         const configuracion = isla.getSettings();

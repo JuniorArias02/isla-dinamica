@@ -21,6 +21,12 @@
  * un audio de WhatsApp Web llega de Brave con la web como título y sin artista.
  * Son dos cosas distintas para la isla: la música va por `alCambiarPista` (reproductor
  * `activo`) y el audio de chat por `alCambiarAudio` (reproductor `activoAudio`).
+ *
+ * La música lleva también el color dominante de su carátula (`colorPortada`, ver
+ * colorPortada.js): llega un instante después, cuando termina de leerse la imagen.
+ * Al pasar de canción, el navegador publica un momento su logo en lugar de la
+ * portada: ese logo no se muestra ni da color, y mientras tanto se mantiene el color
+ * de la canción anterior (así el cambio va de un color al otro, sin saltos).
  */
 
 import Gio from 'gi://Gio';
@@ -29,6 +35,7 @@ import GLib from 'gi://GLib';
 import {TIEMPO_ESPERA_PISTA_MS, TIPOS_PISTA} from '../constantes.js';
 import {registrarInfo, registrarAviso, registrarError, protegido} from '../registro.js';
 import {clasificarAudio} from './reconocedorAudio.js';
+import {ExtractorColor} from './colorPortada.js';
 
 const PREFIJO_MPRIS = 'org.mpris.MediaPlayer2';
 const RUTA_MPRIS = '/org/mpris/MediaPlayer2';
@@ -268,10 +275,17 @@ export class MonitorMultimedia {
     /**
      * @param {Function} alCambiarPista - Recibe la música activa normalizada, o null.
      * @param {Function} [alCambiarAudio] - Recibe el audio de chat que suena (nota de voz), o null.
+     * @param {object} [opciones]
+     * @param {Function} [opciones.cargarIcono] - Icono de un reproductor (iconoApp.js), para
+     *   reconocer el logo que publica el navegador en lugar de la portada.
      */
-    constructor(alCambiarPista, alCambiarAudio = null) {
+    constructor(alCambiarPista, alCambiarAudio = null, {cargarIcono = null} = {}) {
         this._alCambiarPista = alCambiarPista;
         this._alCambiarAudio = alCambiarAudio;
+        // Cuando termina de leerse el color de una carátula, se vuelve a avisar la pista.
+        this._colores = new ExtractorColor({alListo: () => this._programarActualizacion(), cargarIcono});
+        /** Último color de portada conocido (se mantiene mientras llega el siguiente). */
+        this._ultimoColor = null;
         /** Reproductor del audio de chat (en Brave suele ser el mismo que el de la música). */
         this._activoAudio = null;
         this._cancelable = new Gio.Cancellable();
@@ -340,6 +354,7 @@ export class MonitorMultimedia {
         this._reproductores.clear();
         this._activo = null;
         this._activoAudio = null;
+        this._colores.destruir();
         this._alCambiarPista = null;
         this._alCambiarAudio = null;
     }
@@ -410,7 +425,6 @@ export class MonitorMultimedia {
 
         // Cambio de canción: el reproductor activo sigue existiendo pero vació sus datos
         // mientras carga la siguiente. No es el fin de la música: se avisa "cargando".
-        // (Si en lugar de vaciarlos pasó a un audio de chat, la música sí terminó.)
         const anterior = this._activo;
         const sigueAbierto = anterior && this._reproductores.get(anterior.nombreBus) === anterior;
         if (!elegido && sigueAbierto && !anterior.tienePista && this._ultimaPista) {
@@ -418,10 +432,51 @@ export class MonitorMultimedia {
             return;
         }
 
+        // Brave publica una sola cosa a la vez: si su reproductor pasó de la canción a un
+        // audio de chat, la canción no terminó, solo dejó de anunciarse. Se conserva (en
+        // espera y sin controles, que ahora irían al audio) hasta que el audio termine y
+        // Brave vuelva a anunciarla.
+        const pasoAUnAudio = !elegido && sigueAbierto && anterior === this._activoAudio && this._ultimaPista;
+        if (pasoAUnAudio) {
+            this._cancelarEspera();
+            this._emitir({
+                ...this._ultimaPista,
+                enEspera: true,
+                reproduciendo: false,
+                puedeAlternar: false,
+                puedeSiguiente: false,
+                puedeAnterior: false,
+                puedeBuscar: false,
+            });
+            return;
+        }
+
         this._cancelarEspera();
         this._activo = elegido;
-        this._ultimaPista = elegidoMusica?.pista ?? null;
+        this._ultimaPista = this._conColor(elegidoMusica?.pista ?? null);
         this._emitir(this._ultimaPista);
+    }
+
+    /**
+     * Añade a la pista el color de su carátula (null hasta que se conozca).
+     * @param {object|null} pista
+     * @returns {object|null}
+     */
+    _conColor(pista) {
+        // Sin música, no hay color que mantener para la siguiente.
+        if (!pista) {
+            this._ultimoColor = null;
+            return null;
+        }
+        const {color, relleno, pendiente} = this._colores.infoDe(pista.urlCaratula, pista.entradaEscritorio);
+        // Portada real ya leída (o ninguna): su color, y queda como último conocido.
+        if (!relleno && !pendiente) {
+            this._ultimoColor = color;
+            return {...pista, colorPortada: color};
+        }
+        // Leyéndose, o el logo del navegador: se mantiene el color anterior. El logo no
+        // se muestra como carátula (no es la de la canción).
+        return {...pista, colorPortada: this._ultimoColor, urlCaratula: relleno ? null : pista.urlCaratula};
     }
 
     /**

@@ -240,7 +240,7 @@ export const Asomo = GObject.registerClass({
      * Liquid Glass: vidrio de verdad en las dos ventanas.
      * @param {boolean} activo
      */
-    establecerCristal(activo) {
+    establecerVidrio(activo) {
         this._actual.vidrio.visible = activo;
         this._vecina.vidrio.visible = activo;
     }

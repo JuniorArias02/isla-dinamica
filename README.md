@@ -29,7 +29,7 @@ Extensión para **GNOME Shell 50** que convierte el centro del panel superior en
 | **Menú rápido** | Clic derecho en la isla: No molestar, capturar y grabar la pantalla, ajustes y registro de errores |
 | **Privacidad** | Puntos de color cuando se usa el micrófono (naranja), la cámara (verde) o se graba la pantalla (rojo) |
 
-Dos estilos a elegir en los ajustes: **Liquid Glass** (por defecto: vidrio de verdad, que desenfoca el fondo de pantalla y las ventanas de detrás, con esquinas redondeadas, el canto refractado como una lente, borde de luz y brillo especular) o **negro clásico**, como la Dynamic Island original.
+Dos estilos a elegir en los ajustes: **Liquid Glass** (por defecto: vidrio de verdad, que desenfoca el fondo de pantalla y las ventanas de detrás, con esquinas redondeadas, el canto refractado como una lente, borde de luz y brillo especular) o **negro clásico**, como la Dynamic Island original. Con Liquid Glass, la isla se tiñe con el color de la portada de la canción que suena, como el reproductor del iPhone, y el canto del vidrio brilla cerca del puntero, como el reflejo de iOS al inclinar el teléfono.
 
 Todas las transiciones usan resortes: la isla crece desde la cápsula, el contenido aparece después de la forma y al cerrar la cápsula aterriza con un pequeño rebote. Al cambiar de actividad (deslizar, empezar la música, una grabación...), la cápsula se cierra hasta un círculo y renace con el contenido nuevo.
 
@@ -166,6 +166,7 @@ isla-dinamica/
 ├── stylesheet.css
 ├── schemas/              Opciones (GSettings)
 ├── recursos/iconos/      Iconos propios
+├── recursos/estilos/     Hojas de cada estilo (ej. cristal.css, Liquid Glass)
 ├── pruebas/              Pruebas unitarias y de carga en un GNOME aislado
 ├── modulos/
 │   ├── constantes.js     Tiempos, tamaños, prioridades y estados
@@ -186,7 +187,7 @@ Requisitos: `gjs` (viene con GNOME) y, para la revisión del código, Node.js co
 ```bash
 npm install              # una sola vez: instala ESLint
 npm run probar           # revisión del código + esquema + pruebas unitarias (~10 s)
-npm run probar:todo      # lo anterior + carga real en un GNOME Shell aislado (~30 s)
+npm run probar:todo      # lo anterior + carga real en un GNOME Shell aislado (~1,5 min)
 npm run revisar          # solo la revisión del código
 npm run empaquetar       # crea el .zip para publicar en dist/
 npm run probar:paquete   # crea el .zip y lo prueba instalado en un GNOME aislado
@@ -207,6 +208,7 @@ Antes de enviar un cambio, `npm run probar:todo` debe terminar con **✔ Todo co
 | [REGLAS_Y_ESTANDARES.md](.docs/REGLAS_Y_ESTANDARES.md) | Normas de código obligatorias para contribuir |
 | [CONSIDERACIONES_SISTEMA.md](.docs/CONSIDERACIONES_SISTEMA.md) | Compatibilidad, pruebas y depuración |
 | [PUBLICACION.md](.docs/PUBLICACION.md) | Cómo publicar una versión en GitHub y en extensions.gnome.org |
+| [NOVEDADES.md](NOVEDADES.md) | Qué trae cada versión |
 
 Antes de modificar el código, lee **REGLAS_Y_ESTANDARES.md**.
 

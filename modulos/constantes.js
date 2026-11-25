@@ -135,6 +135,52 @@ export const TIEMPO_ALERTA_LLAMADA_MS = 45000;
  */
 export const TIEMPO_MAXIMO_LLAMADA_SONANDO_MS = 90000;
 
+// ───────────── Color de la portada (estilo Liquid Glass) ─────────────
+
+/** Lado (px) al que se reduce la carátula para sacar su color: basta y es rapidísimo. */
+export const LADO_MUESTRA_COLOR_PX = 24;
+
+/**
+ * Diferencia media por píxel (0–255) por debajo de la cual una "carátula" es el logo
+ * del propio reproductor (imagen de relleno de Brave, Chrome...) y no una portada.
+ */
+export const DIFERENCIA_MAXIMA_RELLENO = 22;
+
+/** Colores de carátula que se recuerdan (cada uno es solo un color). */
+export const MAXIMO_COLORES_EN_CACHE = 24;
+
+/** Fundido del tinte al irse (no hay música). */
+export const DURACION_TINTE_MS = 420;
+
+/** Cambio de color entre canciones: el color nuevo entra cruzándose con el anterior. */
+export const DURACION_CAMBIO_COLOR_MS = 650;
+
+/** Después del destello, el color nuevo se asienta en su intensidad normal. */
+export const DURACION_ASENTAR_COLOR_MS = 900;
+
+/** Destello: el color nuevo llega este número de veces más intenso y luego se asienta. */
+export const INTENSIDAD_DESTELLO_TINTE = 1.55;
+
+/** Opacidad del tinte de la canción sobre el vidrio: arriba y abajo (degradado). */
+export const OPACIDAD_TINTE_ARRIBA = 0.46;
+export const OPACIDAD_TINTE_ABAJO = 0.20;
+
+// ───────────── Luz que sigue al puntero (estilo Liquid Glass, componentes/luzVidrio.js) ─────────────
+
+/** La luz se enciende rápido al llegar el puntero y se apaga despacio al irse. */
+export const DURACION_ENCENDER_LUZ_MS = 220;
+export const DURACION_APAGAR_LUZ_MS = 520;
+
+/** Ancho (px) de la franja del canto que brilla. */
+export const ANCHO_CANTO_LUZ_PX = 3;
+
+/** Intensidad (0–1) del halo suave alrededor del puntero. */
+export const INTENSIDAD_HALO_LUZ = 0.10;
+
+/** Hasta dónde llega la luz desde el puntero (px): en la cápsula y en la isla abierta. */
+export const ALCANCE_LUZ_CAPSULA_PX = 46;
+export const ALCANCE_LUZ_TARJETA_PX = 130;
+
 // ───────────── Liquid Glass (componentes/vidrio.js) ─────────────
 
 /** Radio de las esquinas de la isla abierta (debe coincidir con .isla-tarjeta-flotante en el CSS). */
@@ -144,7 +190,7 @@ export const RADIO_TARJETA_PX = 36;
 export const RADIO_DESENFOQUE_VIDRIO = 24;
 
 /** Brillo de lo de detrás (1 = igual; menos = más oscuro, para que el texto blanco se lea). */
-export const BRILLO_VIDRIO = 0.82;
+export const BRILLO_VIDRIO = 0.92;
 
 /** En la isla abierta hay más texto: lo de detrás se oscurece algo más. */
 export const BRILLO_VIDRIO_TARJETA = 0.68;

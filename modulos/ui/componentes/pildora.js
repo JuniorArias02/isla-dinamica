@@ -54,6 +54,7 @@ import {animar, animarConResorte, duracionResorte} from '../movimiento.js';
 import {registrarAviso, protegido} from '../../registro.js';
 import {icono, ICONOS, iconoDeAppDeAudio} from '../iconos.js';
 import {formatearCuentaAtras, formatearTranscurrido} from '../formato.js';
+import {colorDeAcento} from '../estilos/tinte.js';
 import {deslizarEntrada, aparecerConRebote, empujar, latir, detenerLatido} from '../animaciones.js';
 import {Caratula} from './caratula.js';
 import {crearEsqueleto} from './esqueleto.js';
@@ -293,6 +294,8 @@ class Pildora extends St.BoxLayout {
         this._esqueleto.visible = cargando;
         this._onda.visible = musica && !cargando;
         this._onda.establecerActiva(musica && !cargando);
+        // Con el color de la canción (si el estilo lo usa, la pista lo trae), la onda lo toma.
+        this._onda.establecerColor(modo === 'musica' ? colorDeAcento(pista.colorPortada ?? null) : null);
         if (musica) {
             this._caratula.establecerCargando(cargando);
             this._caratula.establecerIcono(modo === 'audio' ? iconoDeAppDeAudio(pista.appAudio) : null);
