@@ -24,6 +24,47 @@ import {ACTIVIDADES} from '../constantes.js';
 import {Pildora} from './componentes/pildora.js';
 import {Burbuja} from './componentes/burbuja.js';
 import {Asomo, FASES_ASOMO} from './componentes/asomo.js';
+import {Vidrio} from './componentes/vidrio.js';
+
+/** Lo que el vidrio copia de la cápsula y del círculo para moverse igual que ellos. */
+const PROPIEDADES_COMPARTIDAS = ['translation-x', 'translation-y', 'scale-x', 'scale-y', 'pivot-point'];
+
+/**
+ * Raíz del botón: la fila (cápsula + círculo) y el asomo, superpuestos. Con Liquid Glass,
+ * detrás de la cápsula y del círculo va un Vidrio de su mismo tamaño y posición, que se
+ * calcula aquí, durante la asignación de tamaño (no pide otra asignación).
+ */
+const RaizPanel = GObject.registerClass(
+class RaizPanel extends St.Widget {
+    _init({caja, pildora, burbuja, asomo}) {
+        super._init({layout_manager: new Clutter.BinLayout(), x_expand: true, y_expand: true});
+        this._caja = caja;
+        this.vidrios = [
+            {vidrio: new Vidrio(), fuente: pildora},
+            {vidrio: new Vidrio(), fuente: burbuja},
+        ];
+        for (const {vidrio, fuente} of this.vidrios) {
+            vidrio.visible = false;
+            for (const propiedad of PROPIEDADES_COMPARTIDAS)
+                fuente.bind_property(propiedad, vidrio, propiedad, GObject.BindingFlags.SYNC_CREATE);
+            this.add_child(vidrio);
+        }
+        // El círculo aparece y desaparece con un fundido: su vidrio, también.
+        burbuja.bind_property('opacity', this.vidrios[1].vidrio, 'opacity', GObject.BindingFlags.SYNC_CREATE);
+        this.add_child(caja);
+        this.add_child(asomo);
+    }
+
+    vfunc_allocate(caja) {
+        super.vfunc_allocate(caja);
+        const origen = this._caja.get_allocation_box();
+        for (const {vidrio, fuente} of this.vidrios) {
+            const lugar = fuente.get_allocation_box();
+            lugar.set_origin(origen.x1 + lugar.x1, origen.y1 + lugar.y1);
+            vidrio.allocate(lugar);
+        }
+    }
+});
 
 export const BotonPanel = GObject.registerClass(
 class BotonPanel extends PanelMenu.Button {
@@ -49,14 +90,30 @@ class BotonPanel extends PanelMenu.Button {
         this._datos = null;
 
         // El botón del panel solo coloca a su primer hijo: la fila y el asomo van superpuestos dentro.
-        const raiz = new St.Widget({
-            layout_manager: new Clutter.BinLayout(),
-            x_expand: true,
-            y_expand: true,
-        });
-        raiz.add_child(caja);
-        raiz.add_child(this._asomo);
-        this.add_child(raiz);
+        this._raiz = new RaizPanel({caja, pildora: this.pildora, burbuja: this.burbuja, asomo: this._asomo});
+        this.add_child(this._raiz);
+
+        this._cristal = false;
+        const sincronizar = () => this._sincronizarVidrios();
+        caja.connect('notify::visible', sincronizar);
+        this.burbuja.connect('notify::visible', sincronizar);
+    }
+
+    /**
+     * Liquid Glass: muestra (o quita) el vidrio de verdad detrás de la cápsula, del
+     * círculo y de las ventanas del asomo.
+     * @param {boolean} activo
+     */
+    establecerCristal(activo) {
+        this._cristal = activo;
+        this._asomo.establecerCristal(activo);
+        this._sincronizarVidrios();
+    }
+
+    _sincronizarVidrios() {
+        const [vidrioPildora, vidrioBurbuja] = this._raiz.vidrios.map(({vidrio}) => vidrio);
+        vidrioPildora.visible = this._cristal && this._caja.visible;
+        vidrioBurbuja.visible = this._cristal && this._caja.visible && this.burbuja.visible;
     }
 
     // ───────────────────────── Asomarse a la vista de al lado ─────────────────────────

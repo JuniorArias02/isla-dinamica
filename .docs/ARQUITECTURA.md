@@ -114,6 +114,7 @@ extension.js = raíz de composición: crea las piezas y las conecta. No tiene l�
         │   ├── pildora.js        Cápsula del panel (hora, música, temporizador, puntos de estado)
         │   ├── burbuja.js        Círculo con la actividad secundaria
         │   ├── asomo.js          Asomarse a la vista de al lado mientras se arrastra la cápsula
+        │   ├── vidrio.js         Liquid Glass: lo de detrás, desenfocado, con esquinas redondeadas y canto refractado
         │   ├── anilloProgreso.js Aro (Cairo, animable) y AnilloProgreso
         │   ├── anilloBateria.js  IndicadorBateria: aro con colores de batería
         │   ├── caratula.js       Portada redondeada o circular (con estado "cargando")
@@ -288,6 +289,31 @@ soltar          [ ♪ Blank Space ∿ ]
 * **El puntero sale de la cápsula:** el arrastre sigue (la cápsula agarra el puntero con `global.stage.grab` mientras dura). La isla se quita del gestor de menús del panel (`Main.panel.menuManager.removeMenu`): GNOME le registra un menú vacío y, con él, ese gestor abría el menú del reloj al pasar el puntero por encima y cortaba el arrastre.
 
 Deslizar con dos dedos en el touchpad sigue cambiando de vista directamente, con la morfosis de 4.3.1.
+
+### 4.3.3 Estilo: Liquid Glass o negro clásico
+
+El ajuste `estilo-isla` elige el aspecto. `IslaUI._aplicarEstilo` pone o quita la clase `isla-cristal` en las dos raíces (`BotonPanel` y `TarjetaFlotante`) y llama a su `establecerCristal()`, que muestra u oculta el vidrio de verdad. La sección "Liquid Glass" de `stylesheet.css` hace el resto. Cambia al instante.
+
+**El vidrio (`componentes/vidrio.js`)** muestra, desenfocado, lo que hay detrás de la isla:
+
+1. **Copia en vivo de lo de detrás**, alineada con la pantalla (se calcula en `vfunc_allocate`):
+   - el fondo de pantalla: `Clutter.Clone` de `Main.layoutManager._backgroundGroup`;
+   - en la isla abierta (`conVentanas`), además cada ventana del área de trabajo: un `Clutter.Clone` por `MetaWindowActor`, con un `BindConstraint` que lo mantiene en su sitio. Se rehacen al mostrarse la tarjeta y con `restacked`, `window-created` y el cambio de área de trabajo; al ocultarse, se quitan.
+   - GNOME **no deja copiar `global.window_group` entero**: su pintado especial deja la copia vacía. Por eso se copian el fondo y las ventanas por separado.
+2. **Desenfoque**: `Shell.BlurEffect` en modo ACTOR sobre una capa interior recortada al tamaño de la isla (así solo se desenfoca ese trozo). El brillo baja un poco (`BRILLO_VIDRIO`; en la isla abierta, `BRILLO_VIDRIO_TARJETA`) para que el texto blanco se lea.
+3. **Shader propio (`EfectoCristal`, `Shell.GLSLEffect`)**: recorta las esquinas redondeadas con borde suave y, en los últimos `REFRACCION_VIDRIO_PX` del canto, toma la imagen más hacia dentro, como una lente. `Shell.BlurEffect` solo desenfoca rectángulos y Mutter 18 no tiene recortes redondeados: por eso hace falta el shader.
+
+**Encima del vidrio**, el CSS pone el tinte (un velo blanco más claro arriba), el borde de luz y el brillo especular (`box-shadow: inset`):
+
+| Dónde | Vidrio | Tinte, borde y brillo |
+| :--- | :--- | :--- |
+| Cápsula y círculo | `RaizPanel` (raíz de `BotonPanel`) pone un `Vidrio` detrás de cada uno, con su caja; copia sus traslaciones, escalas y punto de giro (y la opacidad del círculo) con `bind_property` | El propio fondo de `.isla-pildora` / `.isla-burbuja` |
+| Isla abierta y alertas | Primer hijo de `TarjetaFlotante` (con ventanas) | La capa `isla-cristal-brillo`, encima; la tarjeta en sí no pinta |
+| Asomo (arrastrar la cápsula) | Hijo de cada `VentanaAsomo` | La capa `isla-asomo-tinte`, encima |
+
+* **Coste:** el vidrio de la cápsula solo copia el fondo, que casi nunca cambia, así que su desenfoque se reutiliza. El de la isla abierta se rehace cuando cambia lo de detrás (por ejemplo, con un vídeo detrás), pero solo mientras está abierta.
+* **Botones de color** (contestar, colgar, reproducir, iniciar...): conservan su color y solo ganan el brillo especular. St pinta un degradado *en lugar* del color de fondo, así que un degradado en una regla general taparía los colores de estado.
+* Con "Negro clásico" los vidrios se ocultan (no se pintan ni gastan nada) y todo vuelve al negro sólido.
 
 ### 4.4 Qué se muestra en cada estado
 
@@ -611,6 +637,7 @@ prefs.js (otro proceso) ──escribe──▶ GSettings ◀──lee en el mome
 | `abrir-con-puntero` | `false` | Abrir la isla también al dejar el puntero encima |
 | `tiempo-cierre-ms` | 3000 | Cierre automático tras sacar el puntero |
 | `ocultar-reloj-gnome` | `true` | Ocultar el texto del reloj de Ubuntu |
+| `estilo-isla` | `'cristal'` | Aspecto: `cristal` (Liquid Glass) o `clasico` (negro sólido). Ver 4.3.3 |
 | `arrastre-capsula` | `'asomar'` | Al arrastrar la cápsula: `asomar` (la vista de al lado sigue al puntero) o `cambiar` (cambia al soltar, como en la 1.0). Ver 4.3.2 |
 | `forzar-animaciones` | `true` | Animar aunque el sistema tenga las animaciones apagadas |
 | `mostrar-volumen-brillo` | `true` | Volumen y brillo en la isla |

@@ -37,7 +37,7 @@ import {
     debeConfirmarAsomo,
     direccionCambioDirecto,
 } from './logicaAsomo.js';
-import {ajuste, alCambiarAjuste, dejarDeEscucharAjustes, AJUSTES, ARRASTRE_CAPSULA} from '../ajustes.js';
+import {ajuste, alCambiarAjuste, dejarDeEscucharAjustes, AJUSTES, ARRASTRE_CAPSULA, ESTILOS_ISLA} from '../ajustes.js';
 import {BotonPanel} from './botonPanel.js';
 import {FASES_ASOMO} from './componentes/asomo.js';
 import {TarjetaFlotante} from './tarjetaFlotante.js';
@@ -225,6 +225,10 @@ export class IslaUI {
         // cambio de ventanas. La visibilidad la controla solo la TarjetaFlotante.
         Main.layoutManager.addTopChrome(this._tarjeta);
 
+        // Estilo (Liquid Glass o negro clásico): una clase en las dos raíces; cambia al instante.
+        this._aplicarEstilo(ajuste(AJUSTES.ESTILO_ISLA));
+        alCambiarAjuste(AJUSTES.ESTILO_ISLA, estilo => this._aplicarEstilo(estilo), this);
+
         // El reloj de Ubuntu se oculta (la isla muestra la hora) según el ajuste, y reacciona al instante.
         this._relojGnome = Main.panel.statusArea.dateMenu?._clockDisplay ?? null;
         this._aplicarRelojDeGnome(ajuste(AJUSTES.OCULTAR_RELOJ_GNOME));
@@ -251,6 +255,23 @@ export class IslaUI {
                 this._tarjeta.recolocar();
             return GLib.SOURCE_REMOVE;
         }));
+    }
+
+    /**
+     * Liquid Glass: la clase `isla-cristal` en la cápsula y en la tarjeta activa los
+     * estilos de vidrio de stylesheet.css (sección "Liquid Glass").
+     * @param {string} estilo - Valor de ESTILOS_ISLA.
+     */
+    _aplicarEstilo(estilo) {
+        const cristal = estilo === ESTILOS_ISLA.CRISTAL;
+        for (const raiz of [this._boton, this._tarjeta]) {
+            if (cristal)
+                raiz.add_style_class_name('isla-cristal');
+            else
+                raiz.remove_style_class_name('isla-cristal');
+            // El vidrio de verdad (lo de detrás desenfocado), además del CSS.
+            raiz.establecerCristal(cristal);
+        }
     }
 
     /**

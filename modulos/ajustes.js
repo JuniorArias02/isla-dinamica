@@ -27,6 +27,7 @@ export const AJUSTES = Object.freeze({
     ABRIR_CON_PUNTERO: 'abrir-con-puntero',
     TIEMPO_CIERRE_MS: 'tiempo-cierre-ms',
     OCULTAR_RELOJ_GNOME: 'ocultar-reloj-gnome',
+    ESTILO_ISLA: 'estilo-isla',
     ARRASTRE_CAPSULA: 'arrastre-capsula',
     FORZAR_ANIMACIONES: 'forzar-animaciones',
     MOSTRAR_VOLUMEN_BRILLO: 'mostrar-volumen-brillo',
@@ -39,6 +40,17 @@ export const AJUSTES = Object.freeze({
     MOSTRAR_PRIVACIDAD: 'mostrar-privacidad',
     /** Estado, no opción: la última duración usada en el temporizador. */
     ULTIMA_DURACION_TEMPORIZADOR_S: 'ultima-duracion-temporizador-s',
+});
+
+/**
+ * Valores de AJUSTES.ESTILO_ISLA: el aspecto de la isla.
+ * @enum {string}
+ */
+export const ESTILOS_ISLA = Object.freeze({
+    /** Liquid Glass: vidrio translúcido con brillo especular y borde de luz. */
+    CRISTAL: 'cristal',
+    /** Negro sólido, como la Dynamic Island original. */
+    CLASICO: 'clasico',
 });
 
 /**
@@ -63,6 +75,7 @@ const POR_DEFECTO = Object.freeze({
     [AJUSTES.ABRIR_CON_PUNTERO]: false,
     [AJUSTES.TIEMPO_CIERRE_MS]: 3000,
     [AJUSTES.OCULTAR_RELOJ_GNOME]: true,
+    [AJUSTES.ESTILO_ISLA]: 'cristal',
     [AJUSTES.ARRASTRE_CAPSULA]: 'asomar',
     [AJUSTES.FORZAR_ANIMACIONES]: true,
     [AJUSTES.MOSTRAR_VOLUMEN_BRILLO]: true,

@@ -44,6 +44,8 @@ Estas piezas no son API pública y pueden cambiar en cualquier versión. Son lo 
 | `Main.panel.statusArea.dateMenu._eventSource` | Eventos del calendario (fuente compartida con el panel) |
 | `Main.panel.statusArea.screenRecording.container` | Ocultar el indicador de grabación de GNOME mientras la isla muestra la suya |
 | `status/volume.js · getMixerControl()` y `get_source_outputs()` | Saber qué app usa el micrófono (llamada en curso) y silenciarlo. Es la función que exporta el módulo de volumen de GNOME |
+| `Main.layoutManager._backgroundGroup` | Copiar el fondo de pantalla para el vidrio (Liquid Glass) |
+| `Shell.GLSLEffect` + `Cogl.SnippetHook.FRAGMENT` | Shader del vidrio: esquinas redondeadas y refracción del canto (el mismo mecanismo que `ui/lightbox.js`) |
 | `MessageTray.Notification.actions` | Pulsar "Contestar" / "Rechazar" de una llamada desde la isla |
 | `Main.panel.menuManager.removeMenu(boton.menu)` | Quitar el menú vacío que GNOME registra para la cápsula; si no, al arrastrarla sobre el reloj se abre su menú y el arrastre se corta |
 

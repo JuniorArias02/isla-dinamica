@@ -135,6 +135,23 @@ export const TIEMPO_ALERTA_LLAMADA_MS = 45000;
  */
 export const TIEMPO_MAXIMO_LLAMADA_SONANDO_MS = 90000;
 
+// ───────────── Liquid Glass (componentes/vidrio.js) ─────────────
+
+/** Radio de las esquinas de la isla abierta (debe coincidir con .isla-tarjeta-flotante en el CSS). */
+export const RADIO_TARJETA_PX = 36;
+
+/** Desenfoque de lo que hay detrás del vidrio (px). */
+export const RADIO_DESENFOQUE_VIDRIO = 24;
+
+/** Brillo de lo de detrás (1 = igual; menos = más oscuro, para que el texto blanco se lea). */
+export const BRILLO_VIDRIO = 0.82;
+
+/** En la isla abierta hay más texto: lo de detrás se oscurece algo más. */
+export const BRILLO_VIDRIO_TARJETA = 0.68;
+
+/** Ancho del canto que refracta la luz como una lente (px). */
+export const REFRACCION_VIDRIO_PX = 10;
+
 /** Notificaciones críticas (batería agotándose...): más tiempo que las normales. */
 export const TIEMPO_ALERTA_CRITICA_MS = 10000;
 

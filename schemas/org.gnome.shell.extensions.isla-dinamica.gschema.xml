@@ -43,6 +43,15 @@
       <summary>Ocultar el reloj de Ubuntu</summary>
       <description>La isla muestra la hora; el texto del reloj del panel se oculta.</description>
     </key>
+    <key name="estilo-isla" type="s">
+      <choices>
+        <choice value="cristal"/>
+        <choice value="clasico"/>
+      </choices>
+      <default>'cristal'</default>
+      <summary>Estilo de la isla</summary>
+      <description>"cristal": Liquid Glass (vidrio translúcido con brillo y borde de luz). "clasico": negro sólido, como la Dynamic Island original.</description>
+    </key>
     <key name="arrastre-capsula" type="s">
       <choices>
         <choice value="asomar"/>

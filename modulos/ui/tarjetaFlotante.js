@@ -27,7 +27,8 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-import {RESORTES, RETRASO_CONTENIDO_MS, MARGEN_PANTALLA_PX} from '../constantes.js';
+import {RESORTES, RETRASO_CONTENIDO_MS, MARGEN_PANTALLA_PX, RADIO_TARJETA_PX, BRILLO_VIDRIO_TARJETA} from '../constantes.js';
+import {Vidrio} from './componentes/vidrio.js';
 import {registrarAviso, registrarDepuracion, protegido} from '../registro.js';
 import {
     animarConResorte,
@@ -68,6 +69,15 @@ class TarjetaFlotante extends St.Widget {
         this._cerrando = false;
         this._idSeguroCierre = 0;
 
+        // Liquid Glass: vidrio de verdad (lo de detrás, desenfocado; ventanas incluidas) y
+        // encima su tinte: borde de luz, brillo especular y la luz que entra por arriba.
+        // Ocupan toda la tarjeta y la siguen en cada morfosis; sin el estilo no se ven.
+        this._vidrio = new Vidrio({radio: RADIO_TARJETA_PX, conVentanas: true, brillo: BRILLO_VIDRIO_TARJETA});
+        this._vidrio.visible = false;
+        this.add_child(this._vidrio);
+        this._brillo = new St.Widget({style_class: 'isla-cristal-brillo', x_expand: true, y_expand: true});
+        this.add_child(this._brillo);
+
         // El lienzo recorta el contenido mientras la tarjeta todavía es pequeña.
         this._lienzo = new St.Widget({
             layout_manager: new Clutter.BinLayout(),
@@ -76,6 +86,14 @@ class TarjetaFlotante extends St.Widget {
             y_expand: true,
         });
         this.add_child(this._lienzo);
+    }
+
+    /**
+     * Liquid Glass: muestra (o quita) el vidrio de verdad detrás del contenido.
+     * @param {boolean} activo
+     */
+    establecerCristal(activo) {
+        this._vidrio.visible = activo;
     }
 
     /** @returns {boolean} true si está visible y no se está cerrando. */

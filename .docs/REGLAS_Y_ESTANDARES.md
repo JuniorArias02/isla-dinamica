@@ -54,6 +54,7 @@ servicios/  ──datos──▶  controlador.js  ──vista──▶  ui/
 | Una animación que se repite | `ui/animaciones.js` |
 | Un gesto del usuario | `ui/interaccion.js` |
 | Un componente que necesita el arrastre o desplazamiento **vertical** para sí (ej. una rueda) | Clase CSS `isla-captura-vertical` (la isla no se cerrará al arrastrar sobre él) y devolver `EVENT_STOP` en su `scroll-event` vertical |
+| Un fondo o botón **nuevo** | Comprobarlo con los dos estilos (Liquid Glass y negro clásico). Si es un chip o botón, añadirlo a la lista del brillo especular de la sección "Liquid Glass" del CSS; no ponerle un degradado general (taparía sus colores de estado) |
 | Un botón propio dentro de una **alerta** (ej. contestar una llamada) | Clase CSS `isla-captura-clic`: el clic en él no cuenta además como toque en la alerta |
 | Un tiempo, tamaño o umbral | `constantes.js`. **Nunca** un número suelto en el código |
 | Una **opción que el usuario pueda cambiar** | 1) `<key>` en `schemas/…gschema.xml` · 2) clave y valor por defecto en `ajustes.js` (deben coincidir) · 3) fila en `prefs.js` · 4) leerla con `ajuste(AJUSTES.X)` en el momento de usarla · 5) `glib-compile-schemas schemas/` |

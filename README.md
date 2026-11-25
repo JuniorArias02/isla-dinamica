@@ -29,6 +29,8 @@ Extensión para **GNOME Shell 50** que convierte el centro del panel superior en
 | **Menú rápido** | Clic derecho en la isla: No molestar, capturar y grabar la pantalla, ajustes y registro de errores |
 | **Privacidad** | Puntos de color cuando se usa el micrófono (naranja), la cámara (verde) o se graba la pantalla (rojo) |
 
+Dos estilos a elegir en los ajustes: **Liquid Glass** (por defecto: vidrio de verdad, que desenfoca el fondo de pantalla y las ventanas de detrás, con esquinas redondeadas, el canto refractado como una lente, borde de luz y brillo especular) o **negro clásico**, como la Dynamic Island original.
+
 Todas las transiciones usan resortes: la isla crece desde la cápsula, el contenido aparece después de la forma y al cerrar la cápsula aterriza con un pequeño rebote. Al cambiar de actividad (deslizar, empezar la música, una grabación...), la cápsula se cierra hasta un círculo y renace con el contenido nuevo.
 
 ---
@@ -118,7 +120,7 @@ gnome-extensions prefs isla-dinamica@juniorarias02
 ```
 
 - **Notificaciones:** modo privado (oculta el texto de los mensajes), avisar con "No molestar", duración en pantalla.
-- **Isla:** abrir con el puntero encima, cierre automático, ocultar el reloj de Ubuntu, qué pasa al arrastrar la cápsula (asomarse o cambiar al instante), animar aunque las animaciones del sistema estén desactivadas.
+- **Isla:** estilo (**Liquid Glass** o negro clásico), abrir con el puntero encima, cierre automático, ocultar el reloj de Ubuntu, qué pasa al arrastrar la cápsula (asomarse o cambiar al instante), animar aunque las animaciones del sistema estén desactivadas.
 - **Avisos:** volumen y brillo, cargador, "Copiado", "No molestar" y modo avión, capturas y grabaciones de pantalla, llamadas y videollamadas (y ocultar el indicador de grabación de GNOME), puntos de privacidad.
 
 Los cambios se aplican al instante.

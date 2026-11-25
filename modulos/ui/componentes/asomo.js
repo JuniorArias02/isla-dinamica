@@ -39,6 +39,7 @@ import {
 } from '../../constantes.js';
 import {animarPropiedad, animarPropiedadConResorte} from '../movimiento.js';
 import {Pildora} from './pildora.js';
+import {Vidrio} from './vidrio.js';
 
 /** Fases del asomo. */
 export const FASES_ASOMO = Object.freeze({
@@ -57,15 +58,20 @@ const mezclar = (desde, hasta, t) => desde + (hasta - desde) * t;
  * solo lo que cabe.
  */
 const VentanaAsomo = GObject.registerClass(
-class VentanaAsomo extends St.Bin {
+class VentanaAsomo extends St.Widget {
     _init() {
-        super._init({style_class: 'isla-asomo-ventana'});
+        super._init({style_class: 'isla-asomo-ventana', layout_manager: new Clutter.BinLayout()});
+        // Liquid Glass: vidrio de verdad debajo y el tinte (borde de luz, brillo) encima.
+        this.vidrio = new Vidrio();
+        this.vidrio.visible = false;
+        this.add_child(this.vidrio);
+        this.add_child(new St.Widget({style_class: 'isla-asomo-tinte', x_expand: true, y_expand: true}));
         // Sin gestor de distribución: la previa ocupa su tamaño natural desde la izquierda.
-        const recorte = new St.Widget({clip_to_allocation: true});
+        const recorte = new St.Widget({clip_to_allocation: true, x_expand: true, y_expand: true});
         this.previa = new Pildora({previa: true});
         this.previa.set_pivot_point(0.5, 0.5);
         recorte.add_child(this.previa);
-        this.set_child(recorte);
+        this.add_child(recorte);
     }
 
     /** @returns {number} Ancho natural de la previa (sin el borde de la ventana). */
@@ -228,6 +234,15 @@ export const Asomo = GObject.registerClass({
         this._fase = FASES_ASOMO.CANCELANDO;
         this.remove_all_transitions();
         animarPropiedadConResorte(this, 'progreso', 0, {resorte: RESORTES.CAPSULA, alTerminar});
+    }
+
+    /**
+     * Liquid Glass: vidrio de verdad en las dos ventanas.
+     * @param {boolean} activo
+     */
+    establecerCristal(activo) {
+        this._actual.vidrio.visible = activo;
+        this._vecina.vidrio.visible = activo;
     }
 
     /** Se esconde y deja las vistas previas en reposo (sin animaciones corriendo). */

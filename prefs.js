@@ -64,6 +64,9 @@ export default class PreferenciasIslaDinamica extends ExtensionPreferences {
             'Segundos que la isla abierta sigue visible después de sacar el puntero.', 1, 15));
         isla.add(this._interruptor(AJUSTES.OCULTAR_RELOJ_GNOME, 'Ocultar el reloj de Ubuntu',
             'La isla ya muestra la hora. El botón del calendario sigue funcionando.'));
+        isla.add(this._opciones(AJUSTES.ESTILO_ISLA, 'Estilo',
+            'Liquid Glass: vidrio translúcido con brillo. Clásico: negro sólido.',
+            [['cristal', 'Liquid Glass'], ['clasico', 'Negro clásico']]));
         isla.add(this._opciones(AJUSTES.ARRASTRE_CAPSULA, 'Al arrastrar la cápsula',
             'Asomarse sigue al puntero y cambia al soltar pasada la mitad.',
             [['asomar', 'Asomarse'], ['cambiar', 'Cambiar al instante']]));

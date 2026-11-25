@@ -8,7 +8,7 @@
 import GLib from 'gi://GLib';
 
 import {ejecutar, prueba, igual} from '../utilidades.js';
-import {AJUSTES, ARRASTRE_CAPSULA, ajuste} from '../../modulos/ajustes.js';
+import {AJUSTES, ARRASTRE_CAPSULA, ESTILOS_ISLA, ajuste} from '../../modulos/ajustes.js';
 
 const RUTA_ESQUEMA = GLib.Uri.resolve_relative(import.meta.url,
     '../../schemas/org.gnome.shell.extensions.isla-dinamica.gschema.xml', GLib.UriFlags.NONE);
@@ -42,11 +42,21 @@ ejecutar('Ajustes', async () => {
             igual(ajuste(clave), valor, clave);
     });
 
-    await prueba('el estilo de arrastre por defecto es "asomar" y sus valores son los del esquema', () => {
-        igual(ajuste(AJUSTES.ARRASTRE_CAPSULA), ARRASTRE_CAPSULA.ASOMAR);
+    /** Valores permitidos (<choices>) de una clave de texto del esquema. */
+    const opcionesDe = clave => {
         const [, contenido] = GLib.file_get_contents(GLib.filename_from_uri(RUTA_ESQUEMA)[0]);
         const xml = new TextDecoder().decode(contenido);
-        const opciones = [...xml.matchAll(/<choice value="([^"]+)"\/>/g)].map(([, valor]) => valor);
-        igual(opciones.sort(), Object.values(ARRASTRE_CAPSULA).sort());
+        const bloque = xml.match(new RegExp(`<key name="${clave}"[\\s\\S]*?</key>`))[0];
+        return [...bloque.matchAll(/<choice value="([^"]+)"\/>/g)].map(([, valor]) => valor).sort();
+    };
+
+    await prueba('el estilo de arrastre por defecto es "asomar" y sus valores son los del esquema', () => {
+        igual(ajuste(AJUSTES.ARRASTRE_CAPSULA), ARRASTRE_CAPSULA.ASOMAR);
+        igual(opcionesDe(AJUSTES.ARRASTRE_CAPSULA), Object.values(ARRASTRE_CAPSULA).sort());
+    });
+
+    await prueba('el estilo de la isla por defecto es Liquid Glass y sus valores son los del esquema', () => {
+        igual(ajuste(AJUSTES.ESTILO_ISLA), ESTILOS_ISLA.CRISTAL);
+        igual(opcionesDe(AJUSTES.ESTILO_ISLA), Object.values(ESTILOS_ISLA).sort());
     });
 });

@@ -85,6 +85,7 @@ Puntos que el revisor puede preguntar, con la explicación preparada:
 * **Gestor de menús del panel:** la cápsula se crea sin menú (`dontCreateMenu`), pero GNOME le registra uno vacío en `Main.panel.menuManager`. La isla lo quita al montarse porque ese gestor abría el menú del reloj mientras se arrastraba la cápsula. El botón se destruye en `disable()`.
 * **Notificaciones críticas:** también pasan por la isla (más tiempo en pantalla). Si la isla falla, vuelven al banner nativo.
 * **Micrófono:** para saber si hay una llamada en curso se mira qué app tiene un flujo de grabación (`getMixerControl().get_source_outputs()`, nombre e id de la app) y los títulos de las ventanas. No se escucha ni se graba audio. El botón de silenciar usa `change_is_muted` del micrófono por defecto, como los Ajustes rápidos.
+* **Liquid Glass:** el vidrio copia el fondo de pantalla (`layoutManager._backgroundGroup`) y, solo con la isla abierta, las ventanas (un `Clutter.Clone` por ventana, como la vista general), y los desenfoca con `Shell.BlurEffect`. Un `Shell.GLSLEffect` recorta las esquinas. Se puede desactivar en los ajustes (estilo "Negro clásico") y todo se destruye en `disable()`.
 * **Animaciones forzadas:** `animationRequired` solo afecta a los actores de la isla y se puede desactivar en los ajustes (`forzar-animaciones`).
 
 ---

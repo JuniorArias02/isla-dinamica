@@ -233,6 +233,19 @@ export default class PruebaIsla extends Extension {
             boton._caja.visible && !Main.panel.statusArea.dateMenu.menu.isOpen,
         'al soltar pasada la mitad se queda la vista de al lado (aunque el puntero salga de la cápsula)');
 
+        // Estilo: Liquid Glass por defecto; "Negro clásico" quita el vidrio al instante.
+        const conVidrio = () => isla._isla._boton.has_style_class_name('isla-cristal') &&
+            isla._isla._tarjeta.has_style_class_name('isla-cristal') &&
+            isla._isla._boton._raiz.vidrios[0].vidrio.visible && isla._isla._tarjeta._vidrio.visible;
+        const vidrioAlEmpezar = conVidrio();
+        isla.getSettings().set_string('estilo-isla', 'clasico');
+        await esperar(300);
+        const sinVidrio = !isla._isla._boton.has_style_class_name('isla-cristal') &&
+            !isla._isla._boton._raiz.vidrios[0].vidrio.visible && !isla._isla._tarjeta._vidrio.visible;
+        isla.getSettings().set_string('estilo-isla', 'cristal');
+        await esperar(300);
+        comprobar(vidrioAlEmpezar && sinVidrio && conVidrio(), 'el estilo Liquid Glass se aplica por defecto y se puede cambiar a negro clásico');
+
         // Ajuste "Cambiar al instante" (el arrastre de la 1.0): sin asomo; al soltar cambia por el círculo.
         const configuracion = isla.getSettings();
         configuracion.set_string('arrastre-capsula', 'cambiar');

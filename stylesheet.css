@@ -1505,3 +1505,127 @@
     icon-size: 10px;
     color: #ff9f0a;
 }
+
+/* ═════════════════════ Liquid Glass (ajuste "Estilo" → Liquid Glass) ═════════════════════
+ *
+ * Se activa con la clase `isla-cristal` en la cápsula (BotonPanel) y en la tarjeta
+ * flotante. El material se arma por capas, como el Liquid Glass de Apple:
+ *
+ *   1. Vidrio (componentes/vidrio.js): lo que hay detrás de la isla, desenfocado y
+ *      algo oscurecido, recortado con esquinas redondeadas y con el canto refractado
+ *      como una lente (shader propio).
+ *   2. Tinte: un velo blanco muy suave, más claro arriba (degradado).
+ *   3. Borde de luz: un filo claro alrededor (la luz que se refracta en el canto).
+ *   4. Brillo especular: una línea de luz en el borde superior (sombra interior).
+ *
+ * Capas 2 a 4: en la cápsula y el círculo las pinta su propio fondo (el vidrio va
+ * detrás, en RaizPanel); en la isla abierta y en el asomo, una capa encima del vidrio
+ * (`isla-cristal-brillo`, `isla-asomo-tinte`), porque ahí el vidrio es su hijo.
+ *
+ * Los botones de color conservan su color: solo ganan el brillo especular (un
+ * degradado aquí taparía su color, porque St pinta el degradado en lugar del fondo).
+ */
+
+/* ───── Cápsula y círculo ───── */
+
+.isla-cristal .isla-pildora,
+.isla-cristal .isla-burbuja,
+.isla-cristal .isla-asomo-tinte {
+    border-radius: 999px;
+    background-gradient-direction: vertical;
+    background-gradient-start: rgba(255, 255, 255, 0.20);
+    background-gradient-end: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.36);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.55);
+}
+
+#panel .panel-button.isla-boton-panel.isla-cristal:hover .isla-pildora,
+#panel .panel-button.isla-boton-panel.isla-cristal:hover .isla-asomo-tinte,
+#panel .panel-button.isla-boton-panel.isla-cristal .isla-burbuja:hover {
+    border-color: rgba(255, 255, 255, 0.60);
+}
+
+/* En el asomo, la ventana no pinta nada: el vidrio y el tinte son sus hijos. */
+.isla-cristal .isla-asomo-ventana {
+    background-color: transparent;
+    border-width: 0;
+    box-shadow: none;
+}
+
+/* La copia de dentro del asomo no lleva fondo: el vidrio lo pone su ventana. */
+.isla-cristal .isla-pildora.isla-pildora-previa {
+    background-gradient-direction: none;
+    background-color: transparent;
+    border-width: 0;
+    box-shadow: none;
+}
+
+/* Llamada que suena (círculo): vidrio verde. */
+.isla-cristal .isla-burbuja.llamada {
+    background-gradient-start: rgba(94, 230, 138, 0.92);
+    background-gradient-end: rgba(31, 169, 74, 0.92);
+    border-color: rgba(255, 255, 255, 0.45);
+}
+
+/* El texto blanco sobre un fondo claro: una sombra mínima lo despega. */
+.isla-cristal StLabel {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* ───── Isla abierta y alertas ───── */
+
+/* La tarjeta en sí no pinta: el vidrio y su capa de brillo son sus hijos. */
+.isla-cristal.isla-tarjeta-flotante {
+    background-color: transparent;
+    border-width: 0;
+    box-shadow: none;
+}
+
+.isla-cristal .isla-cristal-brillo {
+    border-radius: 36px;
+    background-gradient-direction: vertical;
+    background-gradient-start: rgba(255, 255, 255, 0.17);
+    background-gradient-end: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.30);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.50);
+}
+
+/* ───── Botones y chips: brillo especular en el borde de arriba ───── */
+
+.isla-cristal .isla-alerta-icono-caja,
+.isla-cristal .isla-fila-dispositivo,
+.isla-cristal .isla-dispositivo-icono-caja,
+.isla-cristal .isla-selector-ruido-boton,
+.isla-cristal .isla-boton-borrar,
+.isla-cristal .isla-fila-notificacion,
+.isla-cristal .isla-modo-icono-caja,
+.isla-cristal .isla-portapapeles-icono-caja,
+.isla-cristal .isla-temporizador-icono-caja,
+.isla-cristal .isla-grabacion-alerta-caja,
+.isla-cristal .isla-llamada-boton,
+.isla-cristal .isla-selector-banda,
+.isla-cristal .isla-temporizador-preset,
+.isla-cristal .isla-temporizador-sumar,
+.isla-cristal .isla-temporizador-cancelar,
+.isla-cristal .isla-temporizador-listo,
+.isla-cristal .isla-temporizador-boton-listo,
+.isla-cristal .isla-captura-miniatura.sin-imagen {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+/* Botones llenos (reproducir, contestar, colgar, detener, iniciar...): más brillo. */
+.isla-cristal .isla-boton-principal,
+.isla-cristal .isla-llamada-contestar,
+.isla-cristal .isla-llamada-rechazar,
+.isla-cristal .isla-llamada-boton-mostrar,
+.isla-cristal .isla-grabacion-detener,
+.isla-cristal .isla-temporizador-iniciar {
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.55);
+}
+
+/* Barras: canal de vidrio. */
+.isla-cristal .isla-barra-progreso,
+.isla-cristal .isla-indicador-osd-barra {
+    background-color: rgba(255, 255, 255, 0.16);
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.35);
+}
